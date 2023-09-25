@@ -72,7 +72,6 @@ tempphyE<-datITSS5c%>%
   filter_taxa(function(x) sum(x>0) >2, prune=T)
 sample_data(tempphyE)$CommunityPlotType<-paste(sample_data(tempphyE)$CommunityType,sample_data(tempphyE)$PlotType,sep="")
 
-
 mynmdsE <- ordinate(tempphyE, "CAP", "bray",formula=as.formula(~PlotType*Site))
 mynmdsE <- ordinate(tempphyE, "CAP", "bray",formula=as.formula(~PlotType+Condition(Site)))
 mynmdsE <- ordinate(tempphyE, "CAP", "bray",formula=as.formula(~CommunityPlotType))
@@ -135,7 +134,192 @@ scores(mynmdsE)$sites
 sample_data(tempphyEWM)$MDS1<-scores(mynmdsE)$sites[,1]
 sample_data(tempphyEWM)$MDS2<-scores(mynmdsE)$sites[,2]
 
+mynmdsE <- ordinate(tempphyEWM, "NMDS", "bray")
+sample_data(tempphyEWM)$NMDS1<-scores(mynmdsE)$sites[,1]
+sample_data(tempphyEWM)$NMDS2<-scores(mynmdsE)$sites[,2]
+
+
 boxplot(sample_data(tempphyEWM)$MDS2~sample_data(tempphyEWM)$PlotType)
+
+sample_data(tempphyEWM)
+
+
+
+
+###### Ordination of stress and abiotic affecting microbes ######
+
+#goal to test if moisture, Ps, Transpiration, Vesicles affects microbes
+
+tempphyE<-datITSS5c%>%
+  subset_samples(ExperimentAnalysis=="Experiment")
+temp<-sample_data(tempphyE)
+temp$SampleID<-gsub("_", "-", temp$PlotID)
+temp$SampleID<-sub("(-.*?)-", "\\1", temp$SampleID)
+head(temp)
+
+temp2<-data.frame(temp)%>%
+  left_join(dat,by="SampleID")
+head(temp2)
+dim(temp2)
+
+#they are in the same order
+temp$SampleNumber
+temp2$SampleNumber
+
+#this is wierd, the first time i did it was 18:57
+#sample_data(tempphyE)[,18:57]<-temp2[,18:57]
+sample_data(tempphyE)[,17:55]<-temp2[,18:56]
+
+
+# WM
+tempphyEWM<-tempphyE%>%
+  subset_samples(Community=="WM")%>%
+  subset_samples(!is.na(Acorrected))%>%
+  filter_taxa(function(x) sum(x>0) >1, prune=T)
+#sample_data(tempphyEMM)$CommunityPlotType<-paste(sample_data(tempphyE)$CommunityType,sample_data(tempphyE)$PlotType,sep="")
+
+sample_data(tempphyEWM)$Acorrected
+
+mynmdsEWM <- ordinate(tempphyEWM, "CAP", "bray",formula=as.formula(~PlotType))
+anova(mynmdsEWM,by="margin",nperm=999)
+mynmdsEWM <- ordinate(tempphyEWM, "CAP", "bray",formula=as.formula(~SoilMoisturePercent+Acorrected+Ecorrected+VesiclesP))
+anova(mynmdsEWM,by="margin",nperm=999)
+
+#Backwards selection
+mynmdsEWM <- ordinate(tempphyEWM, "CAP", "bray",formula=as.formula(~SoilMoisturePercent+Acorrected+Ecorrected+VesiclesP))
+anova(mynmdsEWM,by="margin",nperm=999)
+mynmdsEWM <- ordinate(tempphyEWM, "CAP", "bray",formula=as.formula(~Acorrected+Ecorrected+VesiclesP))
+anova(mynmdsEWM,by="margin",nperm=999)
+mynmdsEWM <- ordinate(tempphyEWM, "CAP", "bray",formula=as.formula(~Acorrected+VesiclesP))
+anova(mynmdsEWM,by="margin",nperm=999)
+anova(mynmdsEWM,nperm=999)
+
+#WM communities are explained by Ps and vesicles
+
+pdf("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Figs/dbRDArootsfungiExpCommunityType.pdf",width=8,height=3)
+plot_ordination(tempphyEWM, mynmdsEWM, type="samples", color="PlotType",axes=c(1,2))+
+  theme_classic()+#  theme(legend.position = "none")
+  geom_point(size = 2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=PlotType),level=.95)
+dev.off()
+
+plot(mynmdsEWM)
+mynmdsEWM <- ordinate(tempphyEWM, "CAP", "bray",formula=as.formula(~SoilMoisturePercent+Condition(Acorrected+Ecorrected+VesiclesP)))
+anova(mynmdsEWM,by="margin",nperm=999)
+
+mynmdsEWM <- ordinate(tempphyEWM, "CAP", "bray",formula=as.formula(~Ecorrected+Condition(Acorrected+SoilMoisturePercent+VesiclesP)))
+anova(mynmdsEWM,by="margin",nperm=999)
+
+mynmdsEWM <- ordinate(tempphyEWM, "CAP", "bray",formula=as.formula(~VesiclesP+Acorrected+Condition(Ecorrected+SoilMoisturePercent)))
+anova(mynmdsEWM,nperm=999)
+
+
+
+# MM
+tempphyEMM<-tempphyE%>%
+  subset_samples(Community=="MM")%>%
+  filter_taxa(function(x) sum(x>0) >1, prune=T)
+#sample_data(tempphyEMM)$CommunityPlotType<-paste(sample_data(tempphyE)$CommunityType,sample_data(tempphyE)$PlotType,sep="")
+
+sample_data(tempphyEMM)
+
+mynmdsEMM <- ordinate(tempphyEMM, "CAP", "bray",formula=as.formula(~PlotType))
+anova(mynmdsEMM,by="margin",nperm=999)
+mynmdsEMM <- ordinate(tempphyEMM, "CAP", "bray",formula=as.formula(~SoilMoisturePercent+Acorrected+Ecorrected+VesiclesP))
+anova(mynmdsEMM,by="margin",nperm=999)
+
+#Backwards selection
+mynmdsEMM <- ordinate(tempphyEMM, "CAP", "bray",formula=as.formula(~SoilMoisturePercent+Acorrected+Ecorrected+VesiclesP))
+anova(mynmdsEMM,by="margin",nperm=999)
+mynmdsEMM <- ordinate(tempphyEMM, "CAP", "bray",formula=as.formula(~Acorrected+Ecorrected+VesiclesP))
+anova(mynmdsEMM,by="margin",nperm=999)
+mynmdsEMM <- ordinate(tempphyEMM, "CAP", "bray",formula=as.formula(~Acorrected+Ecorrected))
+anova(mynmdsEMM,by="margin",nperm=999)
+mynmdsEMM <- ordinate(tempphyEMM, "CAP", "bray",formula=as.formula(~Acorrected))
+anova(mynmdsEMM,by="margin",nperm=999)
+
+#nothing is significant
+
+pdf("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Figs/dbRDArootsfungiExpCommunityType.pdf",width=8,height=3)
+plot_ordination(tempphyEMM, mynmdsEMM, type="samples", color="PlotType",axes=c(1,2))+
+  theme_classic()+#  theme(legend.position = "none")
+  geom_point(size = 2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=PlotType),level=.95)
+dev.off()
+
+plot(mynmdsEMM)
+mynmdsEMM <- ordinate(tempphyEMM, "CAP", "bray",formula=as.formula(~SoilMoisturePercent+Condition(Acorrected+Ecorrected+VesiclesP)))
+anova(mynmdsEMM,by="margin",nperm=999)
+
+mynmdsEMM <- ordinate(tempphyEMM, "CAP", "bray",formula=as.formula(~Ecorrected+Condition(Acorrected+SoilMoisturePercent+VesiclesP)))
+anova(mynmdsEMM,by="margin",nperm=999)
+
+mynmdsEMM <- ordinate(tempphyEMM, "CAP", "bray",formula=as.formula(~VesiclesP+Acorrected+Condition(Ecorrected+SoilMoisturePercent)))
+anova(mynmdsEMM,nperm=999)
+
+
+
+
+# DM
+tempphyEDM<-tempphyE%>%
+  subset_samples(Community=="DM")%>%
+  subset_samples(!is.na(Acorrected))%>%
+  filter_taxa(function(x) sum(x>0) >1, prune=T)
+#sample_data(tempphyEMM)$CommunityPlotType<-paste(sample_data(tempphyE)$CommunityType,sample_data(tempphyE)$PlotType,sep="")
+
+sample_data(tempphyEDM)$VesiclesP
+
+mynmdsEDM <- ordinate(tempphyEDM, "CAP", "bray",formula=as.formula(~PlotType))
+anova(mynmdsEDM,by="margin",nperm=999)
+mynmdsEDM <- ordinate(tempphyEDM, "CAP", "bray",formula=as.formula(~SoilMoisturePercent+Acorrected+Ecorrected+VesiclesP))
+anova(mynmdsEDM,by="margin",nperm=999)
+anova(mynmdsEDM,nperm=999)
+
+#Backwards selection
+mynmdsEDM <- ordinate(tempphyEDM, "CAP", "bray",formula=as.formula(~SoilMoisturePercent+Acorrected+Ecorrected+VesiclesP))
+anova(mynmdsEDM,by="margin",nperm=999)
+mynmdsEDM <- ordinate(tempphyEDM, "CAP", "bray",formula=as.formula(~SoilMoisturePercent+Ecorrected+VesiclesP))
+anova(mynmdsEDM,by="margin",nperm=999)
+mynmdsEDM <- ordinate(tempphyEDM, "CAP", "bray",formula=as.formula(~SoilMoisturePercent+Ecorrected))
+anova(mynmdsEDM,by="margin",nperm=999)
+mynmdsEDM <- ordinate(tempphyEDM, "CAP", "bray",formula=as.formula(~Ecorrected))
+anova(mynmdsEDM,by="margin",nperm=999)
+
+#the only variable that affects DM community comp is transpiration rate
+
+
+pdf("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Figs/dbRDArootsfungiExpCommunityType.pdf",width=8,height=3)
+plot_ordination(tempphyEDM, mynmdsEDM, type="samples", color="PlotType",axes=c(1,2))+
+  theme_classic()+#  theme(legend.position = "none")
+  geom_point(size = 2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=PlotType),level=.95)
+dev.off()
+
+plot(mynmdsEDM)
+mynmdsEDM <- ordinate(tempphyEDM, "CAP", "bray",formula=as.formula(~SoilMoisturePercent+Condition(Acorrected+Ecorrected+VesiclesP)))
+anova((mynmdsEDM),by="margin",nperm=999)
+
+mynmdsEDM <- ordinate(tempphyEDM, "CAP", "bray",formula=as.formula(~Ecorrected+Condition(Acorrected+SoilMoisturePercent+VesiclesP)))
+anova(mynmdsEDM,by="margin",nperm=999)
+
+mynmdsEDM <- ordinate(tempphyEDM, "CAP", "bray",formula=as.formula(~VesiclesP+Acorrected+Condition(Ecorrected+SoilMoisturePercent)))
+anova(mynmdsEDM,nperm=999)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

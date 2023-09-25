@@ -51,6 +51,7 @@ fielddatS<-fielddat%>%
   filter(Proj!="E")%>%
   arrange(Site,Community)
 
+
 ##### Getting Experiment data together #####
 labdat2E<-labdat2%>%
   filter(Proj!="S")%>%
@@ -64,6 +65,15 @@ fielddatE<-fielddat%>%
   arrange(Site,Community)%>%
   mutate(CommunityProj=factor(paste(Community,Proj,sep="_"),levels=c("WM_C","WM_E","MM_C","MM_E","DM_C","DM_E")))%>%
   mutate(Community=factor(Community,levels=c("WM","MM","DM")))
+
+dat<-labdat2E%>%
+  full_join(fielddatE)%>%
+  full_join(licordat2E)%>%
+  full_join(amf2E)
+head(dat)
+dim(dat)
+
+#note eventually I want to reload these dataframes and have the site names listed out "Trough" and have Proj change to Treatment
 
 
 
@@ -505,6 +515,212 @@ mod1<-lme(Ecorrected~CommunityProj,random=~1|Site/Plot,weights=varIdent(form=~1|
 #summary(glht(mod1, linfct = mcp(CommunityProj=c("WM_C-WM_E=0","MM_C-MM_E=0","DM_C-DM_E=0"))), test = adjusted("fdr"))
 summary(glht(mod1, linfct = mcp(CommunityProj=c("WM_C-WM_E=0","MM_C-MM_E=0","DM_C-DM_E=0"))))
 
+
+
+##### Root Staining #####
+
+#amf2 I added replicates etc
+amf<-read.csv("Data/amf2.csv",stringsAsFactors=T)
+head(amf)
+amf$Community<-factor(amf$Community,levels=c("SB","WM","MM","DM","FF"))
+
+#if I'm really going to use this data, I need to go over some of these replicates, I just did a really quick determination of whether to average over reps or delete some. it was not at all clear what the write decision should be for a lot of the reps (i.e. there were no notes about why the rep was done and the results were different but not too different)
+amf2<-amf%>%
+  filter(!(SampleID=="AC-MM1c"&Replicate==2))%>% #comment that staining is weak and rep 2 has less colonization
+  filter(!(SampleID=="AE-MM1a"&Replicate==1))%>% 
+  filter(!(SampleID=="AE-MM1b"&Replicate==1))%>% 
+  filter(!(SampleID=="AE-MM1c"&Replicate==1))%>% 
+  filter(!(SampleID=="AE-MM2a"&Replicate==1))%>% 
+  filter(!(SampleID=="AE-MM2c"&Replicate==1))%>% 
+  filter(!(SampleID=="AS-MM2"&Replicate==1))%>% 
+  filter(!(SampleID=="AS-MM3"&Replicate==1))%>% 
+  filter(!(SampleID=="EE-DM2b"&Replicate==1))%>% 
+  filter(!(SampleID=="EE-DM3c"&Replicate==1))%>% 
+  filter(!(SampleID=="TE-WM1a"&Replicate==1))%>% 
+  filter(!(SampleID=="TE-WM1b"&Replicate==1))%>% 
+  filter(!(SampleID=="TE-WM1c"&Replicate==1))%>% 
+  filter(!(SampleID=="TE-WM2a"&Replicate==1))%>% 
+  filter(!(SampleID=="TE-WM2b"&Replicate==1))%>% 
+  filter(!(SampleID=="TE-WM2c"&Replicate==1))%>% 
+  filter(!(SampleID=="TE-WM3a"&Replicate==1))%>% 
+  filter(!(SampleID=="TE-WM3b"&Replicate==1))%>% 
+  filter(!(SampleID=="TE-WM3c"&Replicate==1))%>% 
+  #filter(Person!="KANELY")%>%
+  #filter(PlantID%nin%c("1b","1c","2b","2c","3b","3c"))%>% #take out samples from the same control plot, only use one. i took this out b/c there were so few WM
+  dplyr::select(SampleID,SiteProj:Replicate,Negative:HyphaeP)%>%
+  group_by(SampleID,SiteProj,Site,Proj,Community,Plot,PlantID)%>%
+  summarise(across(Negative:HyphaeP,~mean(.x,na.rm=T)))%>%
+  arrange(SampleID)
+
+dim(amf2)
+#I'm missing one survey plot
+
+#making df for survey and experiment
+amf2S<-amf2%>%
+  filter(Proj!="E")
+
+amf2E<-amf2%>%
+  filter(Proj!="S")%>%
+  mutate(CommunityProj=factor(paste(Community,Proj,sep="_"),levels=c("WM_C","WM_E","MM_C","MM_E","DM_C","DM_E")))%>%
+  mutate(Community=factor(Community,levels=c("WM","MM","DM")))
+amf2E$Proj<-recode_factor(amf2E$Proj,"C"="Control","E"="Treatment")
+
+
+
+###### Survey ######
+
+#Arbuscules
+m1<-amf2S%>%
+  group_by(Community)%>%
+  summarise(mean=mean(ArbusculesP), se=std.error(ArbusculesP))
+m1
+
+pdf("Figs/ArbusculesSurvey.pdf",width=2.2,height=2.2)
+ggplot(data=m1, aes(x=Community, y=mean))+   
+  geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2,size=.5)+
+  geom_point(size=1.8,show.legend = FALSE)+
+  ylab("Arbuscules (%)")+
+  ylim(5,100)+  
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside")
+dev.off()
+
+#might be kinda necessary, changes the error bars on the WM to make it look like nothing is different from it
+mod1<-lme(ArbusculesP~Community,random=~1|Site,data=amf2S)#,correlation=corSpher(form = ~ Lat+Long)
+mod1emm<-as.data.frame(summary(emmeans(mod1,~Community)))
+anova(mod1, type="marginal")
+summary(glht(mod1, linfct = mcp(Community = "Tukey")))
+
+pdf("Figs/ArbusculesSurvey.pdf",width=2.2,height=2.2)
+ggplot(data=mod1emm, aes(x=Community, y=emmean))+   
+  geom_errorbar(aes(ymax=emmean+SE,ymin=emmean-SE),width=.2,size=.5)+
+  geom_point(size=1.8,show.legend = FALSE)+
+  ylab("Arbuscules (%)")+
+  ylim(5,100)+  
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside")
+dev.off()
+
+#Vesicles
+m1<-amf2S%>%
+  group_by(Community)%>%
+  summarise(mean=mean(VesiclesP), se=std.error(VesiclesP))
+m1
+
+pdf("Figs/VesiclesSurvey.pdf",width=2.2,height=2.2)
+ggplot(data=m1, aes(x=Community, y=mean))+   
+  geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2,size=.5)+
+  geom_point(size=1.8,show.legend = FALSE)+
+  ylab("Vesicles (%)")+
+  ylim(20,90)+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside")
+dev.off()
+
+#again WM error bars get big
+mod1<-lme(VesiclesP~Community,random=~1|Site,data=amf2S)#,correlation=corSpher(form = ~ Lat+Long)
+mod1emm<-as.data.frame(summary(emmeans(mod1,~Community)))
+anova(mod1, type="marginal")
+summary(glht(mod1, linfct = mcp(Community = "Tukey")))
+
+pdf("Figs/VesiclesSurvey.pdf",width=2.2,height=2.2)
+ggplot(data=mod1emm, aes(x=Community, y=emmean))+   
+  geom_errorbar(aes(ymax=emmean+SE,ymin=emmean-SE),width=.2,size=.5)+
+  geom_point(size=1.8,show.legend = FALSE)+
+  ylab("Vesicles (%)")+
+  ylim(20,90)+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside")
+dev.off()
+
+
+
+###### Experiment ######
+
+#Arbuscules
+
+ggplot(amf2E, aes(x=CommunityProj,y=HyphaeP))+
+  geom_boxplot()
+
+m1<-amf2E%>%
+  #group_by(Site,Community,Proj)%>%
+  group_by(Community,Proj)%>%
+  summarise(mean=mean(ArbusculesP), se=std.error(ArbusculesP))
+m1$Proj<-recode_factor(m1$Proj,"C"="Control","E"="Treatment")
+
+as.data.frame(m1)
+
+pdf("Figs/ArbusculesExperiment.pdf",width=3.2,height=2.2)
+ggplot(data=m1, aes(x=Proj, y=mean,group=Community))+   
+  geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2,size=.5)+
+  geom_point(size=1.8,show.legend = FALSE)+
+  ylab("Arbuscules (%)")+
+  ylim(20,100)+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=9),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  facet_wrap(vars(Community),strip.position = "bottom")
+dev.off()
+
+
+mod1<-lme(ArbusculesP~Proj+Community+Proj*Community,random=~1|Site/Plot,weights=varIdent(form=~1|CommunityProj),data=amf2E)#,correlation=corSpher(form = ~ Lat+Long),,weights=varIdent(form=~1|Community)
+mod1emm<-as.data.frame(summary(emmeans(mod1,~Proj|Community)))
+anova(mod1, type="marginal")
+
+mod1<-lme(ArbusculesP~CommunityProj,random=~1|Site/Plot,weights=varIdent(form=~1|CommunityProj),data=amf2E)
+summary(glht(mod1, linfct = mcp(CommunityProj = "Tukey")))
+summary(glht(mod1, linfct = mcp(CommunityProj=c("WM_E-WM_C=0","MM_E-MM_C=0","DM_E-DM_C=0"))))
+
+pdf("Figs/ArbusculesExperiment.pdf",width=3.2,height=2.2)
+ggplot(data=mod1emm, aes(x=Proj, y=emmean))+   
+  geom_errorbar(aes(ymax=emmean+SE,ymin=emmean-SE),width=.2,size=.5)+
+  geom_point(size=1.8,show.legend = FALSE)+
+  ylab("Arbuscules (%)")+
+  ylim(5,100)+  
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  facet_wrap(vars(Community),strip.position = "bottom")
+dev.off()
+
+
+#Vesicles
+
+m1<-amf2E%>%
+  #group_by(Site,Community,Proj)%>%
+  group_by(Community,Proj)%>%
+  summarise(mean=mean(VesiclesP), se=std.error(VesiclesP))
+m1$Proj<-recode_factor(m1$Proj,"C"="Control","E"="Treatment")
+
+as.data.frame(m1)
+
+pdf("Figs/VesiclesExperiment.pdf",width=3.2,height=2.2)
+ggplot(data=m1, aes(x=Proj, y=mean,group=Community))+   
+  geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2,size=.5)+
+  geom_point(size=1.8,show.legend = FALSE)+
+  ylab("Vesicles (%)")+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=9),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  facet_wrap(vars(Community),strip.position = "bottom")
+dev.off()
+
+
+mod1<-lme(VesiclesP~Proj+Community+Proj*Community,random=~1|Site/Plot,weights=varIdent(form=~1|CommunityProj),data=amf2E)#,correlation=corSpher(form = ~ Lat+Long),,weights=varIdent(form=~1|Community)
+mod1emm<-as.data.frame(summary(emmeans(mod1,~Proj|Community)))
+anova(mod1, type="marginal")
+
+mod1<-lme(VesiclesP~CommunityProj,random=~1|Site/Plot,weights=varIdent(form=~1|CommunityProj),data=amf2E)
+summary(glht(mod1, linfct = mcp(CommunityProj = "Tukey")))
+summary(glht(mod1, linfct = mcp(CommunityProj=c("WM_E-WM_C=0","MM_E-MM_C=0","DM_E-DM_C=0"))))
+
+pdf("Figs/VesiclesExperiment.pdf",width=3.2,height=2.2)
+ggplot(data=mod1emm, aes(x=Proj, y=emmean))+   
+  geom_errorbar(aes(ymax=emmean+SE,ymin=emmean-SE),width=.2,size=.5)+
+  geom_point(size=1.8,show.legend = FALSE)+
+  ylab("Vesicles (%)")+
+  ylim(20,90)+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  facet_wrap(vars(Community),strip.position = "bottom")
+dev.off()
 
 
 
