@@ -144,6 +144,42 @@ boxplot(sample_data(tempphyEWM)$MDS2~sample_data(tempphyEWM)$PlotType)
 sample_data(tempphyEWM)
 
 
+tempphyEDM<-datITSS5c%>%
+  subset_samples(ExperimentAnalysis=="Experiment")%>%
+  subset_samples(CommunityType=="DM")%>%
+  filter_taxa(function(x) sum(x>0) >1, prune=T) 
+#sample_data(tempphyEWM)$CommunityPlotType<-paste(sample_data(tempphyEWM)$CommunityType,sample_data(tempphyEWM)$PlotType,sep="")
+
+rowSums(otu_table(tempphyEDM))
+
+mynmdsE <- ordinate(tempphyEDM, "NMDS", "bray")
+#mynmdsE <- ordinate(tempphyEWM, "CAP", "bray",formula=as.formula(~PlotType))
+#anova(mynmdsE)
+mynmdsE <- ordinate(tempphyEDM, "CAP", "bray",formula=as.formula(~1))
+plot_ordination(tempphyE, mynmdsE, type="samples", color="PlotType",axes=c(1,2))+
+  theme_classic()+#  theme(legend.position = "none")
+  geom_point(size = 2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=PlotType),level=.95)
+
+scores(mynmdsE)$sites
+sample_data(tempphyEDM)$MDS1<-scores(mynmdsE)$sites[,1]
+sample_data(tempphyEDM)$MDS2<-scores(mynmdsE)$sites[,2]
+
+mynmdsE <- ordinate(tempphyEDM, "NMDS", "bray")
+sample_data(tempphyEDM)$NMDS1<-scores(mynmdsE)$sites[,1]
+sample_data(tempphyEDM)$NMDS2<-scores(mynmdsE)$sites[,2]
+
+
+boxplot(sample_data(tempphyEDM)$MDS2~sample_data(tempphyEDM)$PlotType)
+
+sample_data(tempphyEDM)
+
+
+
+
+
+
+
 
 
 ###### Ordination of stress and abiotic affecting microbes ######
