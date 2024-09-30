@@ -54,6 +54,7 @@ for i in *; do mv "$i" s"$i"; done;ls -l
 #change path for each sequence set
 path<- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/RootsITS"
 path<- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/SoilITS" 
+#note for soils I had to delete s6218g_S171_L001_R1_001.fastq.gz (a greenhouse soil from Monica's experiment) b/c there was hardly any reads in it, and so I also deleted the other two g files b/c they had only 200 reads and we don't need them anyway
 
 list.files(path)
 
@@ -96,10 +97,18 @@ FWD.orients
 #start 7:12pm, end 7:19pm
 fnFs.filtN <- file.path(path,"filtN", basename(fnFs)) # Put N-filterd files in filtN/ subdirectory
 fnRs.filtN <- file.path(path,"filtN", basename(fnRs))
-filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE)
-filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE, trimRight = c(75,70))#. I'm going to use 75,70 so that I can be pretty close to quality 30 and get longer reads. I used 65,65 for my first analysis for the annual reaport. first try is c(85,75) if I go very strictly by quality cutoff of 30; from phrag dataset soil is trimRight = c(50,90); roots1 is trimRight = c(50,95), roots2 is trimRight = c(50,90)
 
-#count the number of times the primers appear in the forward and reverse read, while considering all possible primer orientations. Identifying and counting the primers on one set of paired end FASTQ files is sufficient, assuming all the files were created using the same library preparation, so we'll just process the first sample.
+#Initial, no trimming
+filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE)
+
+#For roots
+filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE, trimRight = c(44,47))#. I used 44,47. from phrag dataset soil is trimRight = c(50,90); roots1 is trimRight = c(50,95), roots2 is trimRight = c(50,90)
+
+#For soil
+filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE, trimRight = c(4,53))#first tried 20,80
+
+
+#Count the number of times the primers appear in the forward and reverse read, while considering all possible primer orientations. Identifying and counting the primers on one set of paired end FASTQ files is sufficient, assuming all the files were created using the same library preparation, so we'll just process the first sample.
 primerHits <- function(primer, fn) {
   # Counts number of reads in which the primer is found
   nhits <- vcountPattern(primer, sread(readFastq(fn)), fixed = FALSE)
@@ -110,11 +119,11 @@ rbind(FWD.ForwardReads = sapply(FWD.orients, primerHits, fn = fnFs.filtN[[1]]),
       REV.ForwardReads = sapply(REV.orients, primerHits, fn = fnFs.filtN[[1]]), 
       REV.ReverseReads = sapply(REV.orients, primerHits, fn = fnRs.filtN[[1]]))
 
-#remove primers
+#Remove primers
 cutadapt <- "/Users/farrer/opt/miniconda3/envs/qiime2-2023.2/bin/cutadapt" 
 system2(cutadapt, args = "--version") # Run shell commands from R
 
-#create output filenames for the cutadapt-ed files, and define the parameters we are going to give the cutadapt command
+#Create output filenames for the cutadapt-ed files, and define the parameters we are going to give the cutadapt command
 #critical parameters are the primers, and they need to be in the right orientation,
 # i.e. the FWD primer should have been matching the forward-reads in its forward orientation, and the REV primer should have been matching the reverse-reads in its forward orientation. 
 path.cut <- file.path(path, "cutadapt")
@@ -129,7 +138,7 @@ R1.flags <- paste("-g", FWD, "-a", REV.RC)
 # Trim REV and the reverse-complement of FWD off of R2 (reverse reads)
 R2.flags <- paste("-G", REV, "-A", FWD.RC) 
 
-# Run Cutadapt, on 4 cores 4:15-4:20
+#Run Cutadapt, on 4 cores 4:15-4:20
 for(i in seq_along(fnFs)) {
   system2(cutadapt, args = c(R1.flags, R2.flags, "-n", 2, "-m", 20, "-j", 4,# -n 2 required to remove FWD and REV from reads, -m means it deletes reads of less than 20 length, -j is number of cores (i didn't have this flag before, trying it out to see if it is faster)
                              "-o", fnFs.cut[i], "-p", fnRs.cut[i], # output files
@@ -152,12 +161,13 @@ sample.names <- unname(sapply(cutFs, get.sample.name))
 head(sample.names)
 
 #green is mean, median is solid peach (go with median >=30)
-plotQualityProfile(cutFs[30:32])+ 
-  geom_vline(xintercept=225)+ #300-225=75
+#note: I just realized that the primer is taken off, so the forward primer is 21 and cutadapt took off 21 from all the forward reads so the read length is 279 after the untrimmed go through. so I should get the x value and then do 279-x, not 300-x. and the reverse primer is 27bp, so 273-x
+plotQualityProfile(cutFs[7:12])+ 
+  geom_vline(xintercept=275)+ #279-235=44; 279-275=4
   geom_hline(yintercept=30)
 
-plotQualityProfile(cutRs[54:56])+
-  geom_vline(xintercept=230)+ #300-230=70
+plotQualityProfile(cutRs[55:60])+
+  geom_vline(xintercept=220)+ #273-226=47; 273-220=53
   geom_hline(yintercept=30)
 
 
@@ -166,18 +176,20 @@ filtFs <- file.path(path.cut, "filtered", basename(cutFs))
 filtRs <- file.path(path.cut, "filtered", basename(cutRs))
 
 
-
 #Standard filtering parameters maxN=0 (already filtered), truncQ=2, rm.phix=TRUE, maxEE=TRUE. 
 #enforce min length of 50 bp
 #start 10pm, end 10:06
 #trimming low quality bases off at the first step results in over 2* the number of reads!
-outroots <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), 
-                      truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  # on windows, set multithread = FALSE
-head(outroots)
-#cbind(outroots[,2],outroots2[,2])
+#I get about 1000 more reads per samples when using 85,75, but below after joining paired reads it is more variable
+outroots7570 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  # on windows, set multithread = FALSE
+outroots4447 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  # on windows, set multithread = FALSE
+outsoil2080 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  
+outsoil453 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  
+head(outroots8575)
+cbind(outroots4447[,2],outroots8575[,2])
 #write.csv(outroots, "readsout.csv")
 
-#inspect read quality profiles 1,82, 92
+#inspect read quality profiles
 plotQualityProfile(filtFs[70])
 plotQualityProfile(filtRs[70])
 
@@ -202,50 +214,68 @@ dadaRs <- dada(derepRs, err = errR, multithread = TRUE)
 mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE) #default minOverlap=12
 
 #construct sequence table
-#seqtab.Root.Lane1, seqtab.Root.Lane2, seqtab.Soil
+#seqtab.roots, seqtab.soil
 seqtab.roots <- makeSequenceTable(mergers)
+seqtab.soil <- makeSequenceTable(mergers)
 
 #Track reads through pipeline
 getN <- function(x) sum(getUniques(x))
-trackroots<-cbind(outroots2, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN)) 
-trackroots2<-cbind(outroots3, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN))
-trackXXX<-cbind(out4, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN))
+#trackroots7570<-cbind(outroots7570, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN)) 
+#trackroots8575<-cbind(outroots8575, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN))
+trackroots4447<-cbind(outroots4447, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN))
+#tracksoil2080<-cbind(outsoil2080, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN)) 
+tracksoil453<-cbind(outsoil453, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN)) 
+head(trackroots4447)
+head(tracksoil453)
+hist(trackroots8575[,5]-trackroots7570[,5],breaks=65)
+sort(trackroots4447[,5]-trackroots7570[,5])
 
 
-###### MERGE 3 sets ######
-seqtab.all<-mergeSequenceTables(seqtab.Soil,seqtab.Roots1,seqtab.Roots2)
+###### MERGE 2 sets ######
+seqtab.all<-mergeSequenceTables(seqtab.roots,seqtab.soil)
 
 #remove chimeras, start 11:30, end 11:31
-#seqtab.nochim <- removeBimeraDenovo(seqtab.all, method="consensus", multithread=TRUE, verbose=TRUE)
-seqtab.nochim <- removeBimeraDenovo(seqtab.roots, method="consensus", multithread=TRUE, verbose=TRUE)
+seqtab.nochim <- removeBimeraDenovo(seqtab.all, method="consensus", multithread=TRUE, verbose=TRUE)
+#seqtab.nochim <- removeBimeraDenovo(seqtab.soil, method="consensus", multithread=TRUE, verbose=TRUE)
 
-write.csv(seqtab.nochim, "seqtab.nochim.roots.csv")
+write.csv(seqtab.nochim, "seqtab.nochim.csv")
 rownames(seqtab.nochim)
 
 #inspect distribution of sequence length
-plot(table(nchar(getSequences(seqtab.nochim)))) #316 is the most common length. odd that the max sequence length is 382, i wondered if this was an artifact of the large trimming I did due to crappy forward and reverse reads, but by my calcs that would still leave me with (300-85)+(300-75)-12=428. I also tried a less aggressive trimming c(65,65) and I got fewer reads and: 316 is most common length and 412 is max length
+plot(table(nchar(getSequences(seqtab.nochim)))) 
+#Summary of trimming choices and thought process. I realized partway through that the plots I was looking at to determine where to trim had the primers removed, so I was doing the math wrong. Subtracting from 300bp when I should have been subtracting from 279bp (for example for forward reads), so I was over trimming. Interestingly, when you over trim you result in a greater number of reads out, however, you lose the long reads. Here are the results:
+#Roots
+#85,75: 316 is the most common length. odd that the max sequence length is 382.i wondered if this was an artifact of the large trimming I did due to crappy forward and reverse reads, but by my calcs that would still leave me with (300-85)+(300-75)-12=428.
+#75,70: similar in reads out compared to 85,75. Sometimes 85,75 is better, sometimes 75,70 is better. On average 75,70 is better but that is just because there is one sample r50 that has 60,000 more reads from 75,70. However if you look at just how many samples got more reads then 85,75 wins out. However, looking at the histogram of sequence lengths, the right side of the histogram is not really tapering much for the 85,75 run, so we are missing a good chunk of longer sequences. 316 is most common and 397 is max.
+#65,65: fewer reads out compared to above. 316 is most common length and 412 is max length
+#44,47: much fewer reads compared to 75,70, like 7000 fewer reads ballpark per sample. 316 is most common, max is 451. interestingly, the one sample (r143) around 8000 reads that would be a cutoff for rarefaction has 8562 reads in 75/70 and 7507 in 44,47, so not too much different (so the reduction is kind of proportional to the number of reads). The histogram of read lengths really tapers off now, it starts tapering at around 439
+
+#Soils:
+#I used 20,80 and got mode of 316, max of 442
+#Then realized above and tried 4,53 and got mode 216, max 485. I'm getting about 2000 fewer reads in 4,53 compared to 20,80 (but on the samples that would be a rarefaction cutoff, the difference is about 1000 or 500), but a lot of "tail" on the long read end
 
 #normally do track here but not if you merged multiple lanes
-trackroots <- cbind(outroots2, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
+#trackroots <- cbind(outroots2, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
 
 
 
 
 ###### Assign taxonomy ######
 
-#Assign taxonomy, start 10:20am, end 1:50pm
-
-# to get the fasta file gohere:https://unite.ut.ee/repository.php and be sure to do "general release fasta" not qiime. when I did this 9/2023 the doi for the singleton database was not working, so this is the not-singleton database
+# to get the fasta file gohere:https://unite.ut.ee/repository.php and be sure to do "general release fasta" not qiime. This is 4/4/24 releae, the same one I used for the mangrove project
 #unite.ref <- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAMarsh/Survey/Stats/Gradient/QIIME2/sh_general_release_dynamic_s_04.02.2020.fasta" #
-unite.ref <- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/Unite/sh_general_release_dynamic_25.07.2023.fasta" #
+#unite.ref <- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/Unite/sh_general_release_dynamic_25.07.2023.fasta" #
+unite.ref <- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAMarsh/Mangroves/Stats/sh_general_release_dynamic_s_04.04.2024.fasta"
 
-#start 8:17, checked ar 9:30 and was done
+#start 2:10, done  (70 min)
 taxa<-assignTaxonomy(seqtab.nochim, unite.ref, multithread = TRUE, minBoot=70, tryRC = TRUE,outputBootstraps=T)
 taxaonly<-taxa$tax
 
 write.csv(taxa,"/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/taxa.csv")
 
+
 ###### Create tax table for Phyloseq ######
+
 sequences<-as.data.frame(rownames(taxaonly))
 rownames(sequences)<-paste0("OTU",1:nrow(sequences))
 sequences$OTU<-rownames(sequences)
