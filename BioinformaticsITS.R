@@ -45,6 +45,7 @@ library(vegan)
 library(plotrix)
 #library(data.table)
 library(decontam)
+library(tidyverse)
 
 
 #in unix add r or s to beginning of file names
@@ -450,8 +451,8 @@ datITSS5cotu<-cbind(sample_data(datITSS5c),otu_table(datITSS5c))
 richITS<-estimate_richness(datITSS5c, split = TRUE, measures = c("Observed", "Shannon","Chao1","Simpson","InvSimpson"))
 colnames(richITS)<-c("RichnessITS","Chao1ITS","se.chao1ITS","ShannonITS","SimpsonITS","InvSimpsonITS")
 richITS$SampleID<-rownames(richITS)
-richITS2<-separate(richITS,SampleID,c(NA,"Plot"),"s")
-richITS2$Plot<-as.numeric(richITS2$Plot)
+#richITS2<-separate(richITS,SampleID,c(NA,"Plot"),"s")
+#richITS2$Plot<-as.numeric(richITS2$Plot)
 #richITS2<-richITS%>%
 #  left_join(data.frame(sample_data(datITS2rcsoil)))
 #sample_data(datITSS5c)[,]
@@ -465,9 +466,29 @@ dat17<-dat17b
 
 ###### FUNguild ######
 #https://github.com/UMNFuN/FUNGuild
+#https://github.com/brendanf/FUNGuildR
+devtools::install_github("brendanf/FUNGuildR")
+library(FUNGuildR)
 
-temp<-data.frame(cbind(tax_table(datITSS5c),1))
-temp$V8<-NULL
+#The weird thing about FUNGuildR is that for some taxa, like when I have Fusarium equiseti it matches to Nectriaceae rather than Fusarium in the database. When I used the FUNGUILD in the terminal, it worked better and matched to the lowest taxonomic level. 
+
+#Trying with FUNguildR
+# funguild<-data.frame(tax_table(datITSS5c))
+# funguild2<-funguild%>%
+#   unite("Kingdom_Species",sep=";",remove=T)
+# colnames(funguild2)<-"Taxonomy"
+# funguild2$OTUID<-rownames(funguild2)
+# funguild3<-data.frame(OTUID=funguild2$OTUID,Taxonomy=funguild2$Taxonomy)
+# head(funguild3)
+# funguild4<-funguild_assign(funguild3)
+# View(funguild4)
+
+#I don't need this but I'm curious if it differs from the online one here: http://www.stbates.org/funguild_db.php   it doesn't seem to differ...
+# fung <- get_funguild_db()
+# fung[fung$taxon=="Meliniomyces",]
+
+#Trying in terminal
+temp<-data.frame(tax_table(datITSS5c))
 temp2<-temp%>%
   unite("Kingdom_Species",sep=";",remove=T)
 head(temp2)
@@ -475,6 +496,7 @@ colnames(temp2)<-"taxonomy"
 
 datITSS5cfunguild<-cbind(t(otu_table(datITSS5c)),temp2)
 datITSS5cfunguild[1:5,155:157]
+datITSS5cfunguild[1:5,1:5]
 write.csv(datITSS5cfunguild,"/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/datITSS5cfunguild.csv")
 #then open the file and write "OTU ID" in the first cell
 
@@ -486,44 +508,77 @@ python Guilds_v1.1.py -otu datITSS5cfunguild.csv -m -u
 
 funguild<-read.delim2("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/datITSS5cfunguild.guilds.txt",header=T,row.names = 1)
 head(funguild)
-funguild[1:5,157:166]
-
-#rarefied to 7198
-colSums(funguild[,2:5])
-
+funguild[20:25,300:323]
+funguild$OTU<-rownames(funguild)
+funguild
+funguild$OTUnum <- as.numeric(gsub("^.{0,3}", "", funguild$OTU))
 funguild2<-funguild%>%
+  arrange(OTUnum)
+funguild2[1:5,320:325]
+funguild2[1:5,1:5]
+
+#comparing the two, often the results for guild or trophic mode aren't different, but sometimes the FUNguildR result is actually more specific/narrowed down which is weird, but I guess the database does not automatically have the family have all the charactertics of all genera. so if not a lot is know just about a family you might get only one trophic mode, whereas for a genus you get two b/c there are more studies at the genus level. this is odd behavior but I think doing it to genus is better
+# cbind(funguild2$Taxon,funguild4$taxon)
+# i<-258
+# funguild2$taxonomy[i]
+# funguild4$Taxonomy[i]
+# funguild2$Taxon[i]
+# funguild4$taxon[i]
+# funguild2$Guild[i] #terminal
+# funguild4$guild[i] #FUNguildR
+# funguild2$Trophic.Mode[i] #terminal
+# funguild4$trophicMode[i] #FUNguildR
+# funguild2[i,]
+# funguild4[i,]
+
+
+
+
+#rarefied to 4476
+colSums(funguild2[,2:5])
+funguild2[c("Trophic.Mode","Confidence.Ranking")]
+funguild2[1:5,315:325]
+
+funguild2%>%filter(Trophic.Mode==("Pathotroph"))
+funguild2%>%filter(Trophic.Mode==("Symbiotroph"))
+
+#funguild_query doesn't work on the terminal output b/c the column names are slightly different from the FUNguildR output
+#funguild_query("*Saprotroph*", "Trophic.Mode", db = funguild2)
+
+funguild3<-funguild2%>%
   filter(Trophic.Mode%in%c("Symbiotroph","Pathotroph","Saprotroph"))%>%
+  #filter(Confidence.Ranking%in%c("Probable","Highly Probable"))%>%
   arrange(Trophic.Mode)%>%
-  dplyr::select(X1:X99,Trophic.Mode)%>%
+  dplyr::select(r1:s99,Trophic.Mode)%>%
   group_by(Trophic.Mode)%>%
   summarise_all(list(sum=sum))
-funguild3<-data.frame(funguild2)
-row.names(funguild3)<-funguild3$Trophic.Mode;funguild3$Trophic.Mode<-NULL
-funguild4<-data.frame(t(funguild3))
-head(funguild4)
-funguild4$SampleNumbertemp<-row.names(funguild4)
-funguild5<-funguild4%>%
+funguild4<-data.frame(funguild3)
+row.names(funguild4)<-funguild3$Trophic.Mode;funguild4$Trophic.Mode<-NULL
+funguild5<-data.frame(t(funguild4))
+head(funguild5)
+funguild5$SampleNumbertemp<-row.names(funguild5)
+funguild6<-funguild5%>%
   separate(SampleNumbertemp,into=c("SampleNumber",NA))
-funguild5$SampleNumber<-as.numeric(sub("X","",funguild5$SampleNumber))
-funguild5[,1:3]<-funguild5[,1:3]/7198*100
+#funguild6$SampleNumber<-as.numeric(sub("X","",funguild6$SampleNumber))
+funguild6[,1:3]<-funguild6[,1:3]/4476*100
 
 temp<-sample_data(datITSS5c)
 cbind(temp$SampleNumber,funguild5$SampleNumber)
-temp[,17:19]<-funguild5[,1:3]
+temp[,18:20]<-funguild6[,1:3]
 temp<-data.frame(temp)
 
 #Make a graph for annual report
 #pathogens
 m1<-temp%>%
   filter(PlotType!="Survey")%>%
-  group_by(CommunityType,PlotType)%>%
+  group_by(SampleType,CommunityType,Treatment)%>%
   summarise(mean=mean(Pathotroph), se=std.error(Pathotroph))
 m1
 m1$CommunityType<-factor(m1$CommunityType,levels=c("WM","MM","DM"))
 #m1$CommunityType<-recode_factor(m1$CommunityType,"C"="Control","E"="Treatment")
 
 pdf("Figs/PathogensExperiment.pdf",width=3.2,height=2.2)
-ggplot(data=m1, aes(x=PlotType, y=mean))+   
+ggplot(data=m1, aes(x=Treatment, y=mean,color=SampleType))+   
   geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2,size=.5)+
   geom_point(size=1.8,show.legend = FALSE)+#, aes(group=Seed.Origin, fill=Seed.Origin, shape=Seed.Origin, color = Seed.Origin)
   ylab("Pathogens %")+
@@ -536,14 +591,14 @@ dev.off()
 #symbionts
 m1<-temp%>%
   filter(PlotType!="Survey")%>%
-  group_by(CommunityType,PlotType)%>%
+  group_by(SampleType,CommunityType,Treatment)%>%
   summarise(mean=mean(Symbiotroph), se=std.error(Symbiotroph))
 m1
 m1$CommunityType<-factor(m1$CommunityType,levels=c("WM","MM","DM"))
 #m1$CommunityType<-recode_factor(m1$CommunityType,"C"="Control","E"="Treatment")
 
 pdf("Figs/SymbiontsExperiment.pdf",width=3.2,height=2.2)
-ggplot(data=m1, aes(x=PlotType, y=mean))+   
+ggplot(data=m1, aes(x=Treatment, y=mean,color=SampleType))+   
   geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2,size=.5)+
   geom_point(size=1.8,show.legend = FALSE)+#, aes(group=Seed.Origin, fill=Seed.Origin, shape=Seed.Origin, color = Seed.Origin)
   ylab("Symbionts %")+
@@ -581,7 +636,7 @@ dat17b<-dat17%>%
 dat17<-dat17b
 
 #Note: any taxon classified as one thing (i.e. plant pathogen with nothing else) always gets at least a probable, no possibles.
-#Trying taking out the "probables" for plant pathogens so it only includes highly probable. if i do this, there are only 7 non zero plots for plant pathogens, so that's not reasonble 
+#Trying taking out the "probables" for plant pathogens so it only includes highly probable. if i do this, there are only 7 non zero plots for plant pathogens, so that's not reasonable 
 funguild2<-funguild%>% 
   filter(Guild%in%c("Plant Pathogen","Endophyte","Arbuscular Mycorrhizal"))%>%
   filter(Confidence.Ranking=="Highly Probable")%>%
