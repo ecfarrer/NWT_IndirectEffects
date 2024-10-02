@@ -262,12 +262,12 @@ plot(table(nchar(getSequences(seqtab.nochim))))
 
 ###### Assign taxonomy ######
 
-# to get the fasta file gohere:https://unite.ut.ee/repository.php and be sure to do "general release fasta" not qiime. This is 4/4/24 releae, the same one I used for the mangrove project
+# to get the fasta file gohere:https://unite.ut.ee/repository.php and be sure to do "general release fasta" not qiime. This is 4/4/24 releae, the same one I used for the mangrove project. Note that the zip files is named slightly differently than the actual fasta when you unzip it (_s_ vs _dyanmic_s_)
 #unite.ref <- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAMarsh/Survey/Stats/Gradient/QIIME2/sh_general_release_dynamic_s_04.02.2020.fasta" #
 #unite.ref <- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/Unite/sh_general_release_dynamic_25.07.2023.fasta" #
 unite.ref <- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAMarsh/Mangroves/Stats/sh_general_release_dynamic_s_04.04.2024.fasta"
 
-#start 2:10, done  (70 min)
+#start 2:23, done  (70 min)
 taxa<-assignTaxonomy(seqtab.nochim, unite.ref, multithread = TRUE, minBoot=70, tryRC = TRUE,outputBootstraps=T)
 taxaonly<-taxa$tax
 
@@ -280,13 +280,13 @@ sequences<-as.data.frame(rownames(taxaonly))
 rownames(sequences)<-paste0("OTU",1:nrow(sequences))
 sequences$OTU<-rownames(sequences)
 colnames(sequences)<-c("sequence","OTUID")
-OTUID<-as.data.frame(sequences$OTUID)
+#OTUID<-as.data.frame(sequences$OTUID)
 
-taxa1<-cbind(OTUID, taxaonly)
+taxa1<-cbind(as.data.frame(sequences$OTUID), taxaonly)
 write.csv(taxa1,"/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/taxa_OTUID.csv")
 
-OTUID<-sequences$OTUID
-rownames(taxa1)<-OTUID
+#OTUID<-sequences$OTUID
+rownames(taxa1)<-sequences$OTUID
 
 #use this for phyloseq tax table
 taxa1<-taxa1[,2:8]
@@ -300,7 +300,7 @@ phy.tax
 sam<-as.data.frame(rownames(seqtab.nochim))
 names(sam)<-"SampleNumber"
 
-sam2<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Data/NWTroots2023.csv")
+sam2<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Data/NWTrootssoil2023.csv") #roots only is NWTroots2023.csv
 
 #join
 sam3<-left_join(sam,sam2, by="SampleNumber")
@@ -313,17 +313,17 @@ sam3$is.neg<-ifelse(sam3$Sample_or_Control=="Control",TRUE,FALSE)
 phy.sam<-sample_data(sam3)
 rownames(phy.sam)<-sam3$SampleNumber
 
+
 ###### Create official ASV Table ######
 OTU.Table<-as.data.frame(seqtab.nochim)
-#colnames(OTU.Table)<-OTUID
-temp<-1:7594
-colnames(OTU.Table)<-paste("OTU",temp,sep="")
+colnames(OTU.Table)<-sequences$OTUID
+#temp<-1:dim(OTU.Table)[2] #16535 OTUs
+#colnames(OTU.Table)<-paste("OTU",temp,sep="")
 OTU.Table[1:5,1:5]
 
-SampleNumber<-sam3$SampleNumber
 
-#check
-cbind(rownames(OTU.Table),as.character(SampleNumber))
+#check that otu table is in the same order as sample file
+cbind(rownames(OTU.Table),as.character(sam3$SampleNumber))
 #rownames(OTU.Table)<-SampleNumber
 #OTU.Table$SampleID_Original<-rownames(OTU.Table)
 #ASV.Table<-left_join(OTU.Table,sam,by="SampleID_Original")
@@ -348,11 +348,11 @@ print(as.data.frame(unique(tax_table(datITS)[,"Kingdom"])),row.names=F)
 ####Filter and remove contaminant sequences with decontam()####
 #note!!!! if you filter with subset_taxa and a !=, it will NOT return any rows that are NA, so you always have to do an "or NA" in the statement
 
-#Filter samples with really low numbers of reads (<1000), not sure if this is necessary for the prevelance method but it is kind of weird that some of my actual samples had lower number of reads than the negative controls. This could be because the pcr failed and susannah put them in anyway "just in case" but if the pcr failed and all we got was contamination, then that skews the ability to see that they are contaminated.
+#Filter samples with really low numbers of reads (<1000), not sure if this is necessary for the prevalence method but it is kind of weird that some of my actual samples had lower number of reads than the negative controls. This could be because the pcr failed and we put them in anyway "just in case" but if the pcr failed and all we got was contamination, then that skews the ability to see that they are contaminated. here it was only 1 sample
 sort(sample_sums(datITS))
 
 datITSS<-datITS%>%
-  subset_samples(sample_sums(datITS)>1000) 
+  subset_samples(sample_sums(datITS)>900) 
 datITSS
 
 sample_data(datITSS)
@@ -365,8 +365,8 @@ ggplot(data=dfITS, aes(x=Index, y=LibrarySize, color=Sample_or_Control)) + geom_
 
 contamdf.prevITS <- isContaminant(datITSS, method="prevalence", neg="is.neg")
 table(contamdf.prevITS$contaminant)#default threshold is .1
-contamdf.prevITS5 <- isContaminant(datITSS, method="prevalence", neg="is.neg",threshold = .2)
-table(contamdf.prevITS5$contaminant)
+#contamdf.prevITS5 <- isContaminant(datITSS, method="prevalence", neg="is.neg",threshold = .2)
+#table(contamdf.prevITS5$contaminant)
 
 datITSS.pa <- transform_sample_counts(datITSS, function(abund) 1*(abund>0))
 datITSS.pa.neg <- prune_samples(sample_data(datITSS.pa)$is.neg == TRUE, datITSS.pa)
@@ -379,12 +379,12 @@ ggplot(data=datITSSdf.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_poi
   xlab("Prevalence (Negative Controls)") + ylab("Prevalence (True Samples)")
 
 #threshold .2
-datITSSdf.pa <- data.frame(pa.pos=taxa_sums(datITSS.pa.pos), pa.neg=taxa_sums(datITSS.pa.neg),contaminant=contamdf.prevITS5$contaminant)
-ggplot(data=datITSSdf.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_point() +
+#datITSSdf.pa <- data.frame(pa.pos=taxa_sums(datITSS.pa.pos), pa.neg=taxa_sums(datITSS.pa.neg),contaminant=contamdf.prevITS5$contaminant)
+#ggplot(data=datITSSdf.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_point() +
   xlab("Prevalence (Negative Controls)") + ylab("Prevalence (True Samples)")
 
 
-#I think I will use a threshold = 0.1 (before I've used .2). It retains some of the taxa that were only present in one of the negative controls 
+#I will use a threshold = 0.1 (in phrag suff I think I've used .2). (when I did roots alone I used 0.1) 
 
 #take out contaminants and filter negative controls, there were 98 contaminants
 datITSS2 <- prune_taxa(!contamdf.prevITS$contaminant, datITSS)
@@ -395,22 +395,22 @@ datITSS3 <-datITSS2 %>%
 min(sample_sums(datITSS4))
 sort(sample_sums(datITSS3))
 
-#Filter out root samples and samples with low sampling depth
+#Filter out root samples and samples with low sampling depth. THis is tough, I could rarefy to 4476 and only delete 4 low samples or I could rarefy to 6131 and delete 6 low samples. I will choose 4476 so that I can have more root and soil samples from the same plots
 datITSS4 <-datITSS3 %>%
   #subset_samples(SampleType=="soil")%>%
-  subset_samples(sample_sums(datITSS3)>5000) %>%
+  subset_samples(sample_sums(datITSS3)>4000) %>%
   filter_taxa(function(x) sum(x) > (0), prune=T)
 
 
-####### Rarefy to 7198 ######
-#This takes out samples: 138, 137, 139 (this was taken out before decontam)
+####### Rarefy to 4476 ######
+#This takes out samples: r138, r137, r139 (this was taken out before decontam), s23,  s48
 datITSS4
 datITSS5<-datITSS4%>%
   rarefy_even_depth(sample.size=min(sample_sums(datITSS4)),rngseed=10,replace=F)%>%
   transform_sample_counts(function(x) x/sum(x) )
 datITSS5c<-datITSS4%>%
   rarefy_even_depth(sample.size=min(sample_sums(datITSS4)),rngseed=10,replace=F)
-#879 OTUs were removed because they are no longer present in any sample after random subsampling
+#2320 OTUs were removed because they are no longer present in any sample after random subsampling
 
 
 
