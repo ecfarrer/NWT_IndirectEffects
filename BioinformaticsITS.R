@@ -6,14 +6,13 @@ rig default 4.4-x86_64
 #First filter and infer sequence variants for each set: Roots, Soil
 #For each set, run through fist part of script, CHANGE DIRECTORY folder
 
-#These workspaces are from my first go through with only the root data.
+#These workspaces are from my first go through with bioinformatics only the root data.
 load("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspace1.RData")
-load("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspace1analysis.RData")
+
 
 #These are updated for both roots and soil
-load("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspace2.RData")
-
-save.image(file = "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspace2.RData")
+load("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspacebioinformaticsITS.Rdata")
+save.image(file = "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspacebioinformaticsITS.Rdata")
 
 # BiocManager::install(version = '3.16') #old
 # BiocManager::version() #the one for R 4.4 is 3.19
@@ -106,7 +105,7 @@ filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE)
 filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE, trimRight = c(44,47))#. I used 44,47. from phrag dataset soil is trimRight = c(50,90); roots1 is trimRight = c(50,95), roots2 is trimRight = c(50,90)
 
 #For soil
-filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE, trimRight = c(4,53))#first tried 20,80
+filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE, trimRight = c(4,53))#I used 4,52. first tried 20,80
 
 
 #Count the number of times the primers appear in the forward and reverse read, while considering all possible primer orientations. Identifying and counting the primers on one set of paired end FASTQ files is sufficient, assuming all the files were created using the same library preparation, so we'll just process the first sample.
@@ -182,9 +181,9 @@ filtRs <- file.path(path.cut, "filtered", basename(cutRs))
 #start 10pm, end 10:06
 #trimming low quality bases off at the first step results in over 2* the number of reads!
 #I get about 1000 more reads per samples when using 85,75, but below after joining paired reads it is more variable
-outroots7570 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  # on windows, set multithread = FALSE
+#outroots7570 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  # on windows, set multithread = FALSE
 outroots4447 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  # on windows, set multithread = FALSE
-outsoil2080 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  
+#outsoil2080 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  
 outsoil453 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  
 head(outroots8575)
 cbind(outroots4447[,2],outroots8575[,2])
@@ -249,7 +248,7 @@ plot(table(nchar(getSequences(seqtab.nochim))))
 #85,75: 316 is the most common length. odd that the max sequence length is 382.i wondered if this was an artifact of the large trimming I did due to crappy forward and reverse reads, but by my calcs that would still leave me with (300-85)+(300-75)-12=428.
 #75,70: similar in reads out compared to 85,75. Sometimes 85,75 is better, sometimes 75,70 is better. On average 75,70 is better but that is just because there is one sample r50 that has 60,000 more reads from 75,70. However if you look at just how many samples got more reads then 85,75 wins out. However, looking at the histogram of sequence lengths, the right side of the histogram is not really tapering much for the 85,75 run, so we are missing a good chunk of longer sequences. 316 is most common and 397 is max.
 #65,65: fewer reads out compared to above. 316 is most common length and 412 is max length
-#44,47: much fewer reads compared to 75,70, like 7000 fewer reads ballpark per sample. 316 is most common, max is 451. interestingly, the one sample (r143) around 8000 reads that would be a cutoff for rarefaction has 8562 reads in 75/70 and 7507 in 44,47, so not too much different (so the reduction is kind of proportional to the number of reads). The histogram of read lengths really tapers off now, it starts tapering at around 439
+#44,47: much fewer reads compared to 75,70, like 7000 fewer reads ballpark per sample. 316 is most common, max is 451. interestingly, the one sample (r143) around 8000 reads that would be a cutoff for rarefaction has 8562 reads in 75/70 and 7507 in 44,47, so not too much different (so the reduction is kind of proportional to the number of reads). The histogram of read lengths really tapers off now, it starts tapering at around 439. I will use this!
 
 #Soils:
 #I used 20,80 and got mode of 316, max of 442
