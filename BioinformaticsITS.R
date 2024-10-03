@@ -390,7 +390,7 @@ ggplot(data=datITSSdf.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_poi
 datITSS2 <- prune_taxa(!contamdf.prevITS$contaminant, datITSS)
 datITSS3 <-datITSS2 %>%
   subset_samples(is.neg==FALSE)%>%
-  filter_taxa(function(x) sum(x) > (0), prune=T) #odd 20 taxa additionally are removed after removing the 89 contaminants. these must be taxa only found in the negative controls (which for some reason are not called contaminants) (??)
+  filter_taxa(function(x) sum(x) > (0), prune=T) #odd some taxa additionally are removed after removing the contaminants. these must be taxa only found in the negative controls (which for some reason are not called contaminants) (??)
 
 min(sample_sums(datITSS4))
 sort(sample_sums(datITSS3))
