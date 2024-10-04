@@ -1,4 +1,4 @@
-#2021 Bioinformatics for root and soil fungal ITS samples for NSF Eager Indirect Effects Project
+#2021 bioiinformatics for Root and soil bacteria 16S samples for NSF Eager Indirect Effects Project
 
 #Be sure to go to terminal and run the following to open the R version 4.4.1
 rig default 4.4-x86_64
@@ -6,13 +6,8 @@ rig default 4.4-x86_64
 #First filter and infer sequence variants for each set: Roots, Soil
 #For each set, run through fist part of script, CHANGE DIRECTORY folder
 
-#These workspaces are from my first go through with bioinformatics only the root data.
-load("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspace1.RData")
-
-
-#These are updated for both roots and soil
-load("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspacebioinformaticsITS.Rdata")
-save.image(file = "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspacebioinformaticsITS.Rdata")
+load("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspacebioinformatics16S.RData")
+save.image(file = "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspacebioinformatics16S.RData")
 
 # BiocManager::install(version = '3.16') #old
 # BiocManager::version() #the one for R 4.4 is 3.19
@@ -35,8 +30,7 @@ library(Biostrings)
 library("phyloseq")
 library("plyr")
 library("ggplot2")
-library(dplyr)
-library(tidyr)
+library(tidyverse)
 library(nlme)
 library(vegan)
 #library(reshape)
@@ -44,7 +38,11 @@ library(vegan)
 library(plotrix)
 #library(data.table)
 library(decontam)
-library(tidyverse)
+
+#a pipeline to follow for 16S and dada2 in R
+https://shibalytics.com/teaching/16s/microbiome_analysis_part_i
+https://shibalytics.com/teaching/16s/microbiome_analysis_part_ii
+
 
 
 #in unix add r or s to beginning of file names
@@ -52,32 +50,46 @@ for i in *; do mv "$i" r"$i"; done;ls -l
 for i in *; do mv "$i" s"$i"; done;ls -l
 
 #change path for each sequence set
-path<- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/RootsITS"
-path<- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/SoilITS" 
-#note for soils I had to delete s6218g_S171_L001_R1_001.fastq.gz (a greenhouse soil from Monica's experiment) b/c there was hardly any reads in it, and so I also deleted the other two g files b/c they had only 200 reads and we don't need them anyway
+path<- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/Roots16S"
+path<- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/Soil16S" 
 
 list.files(path)
+
+#Look at a sequence from one sample
+# test <- readFastq("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/Roots16S/r1_S1_L001_R1_001.fastq.gz")
+# test
+# width(test)
+# str(sread(test)[1])
+# as.character(sread(test)[1])
+
 
 #separate forward and reverse
 fnFs <- sort(list.files(path,pattern= "_L001_R1_001.fastq.gz", full.names = TRUE))
 fnRs <- sort(list.files(path,pattern = "_L001_R2_001.fastq.gz", full.names = TRUE))
 
+#look at quality here?? I feel like it is harder to see what is happeneing compared to after you trim primers off
+plotQualityProfile(fnFs[1:6])+ 
+  geom_hline(yintercept=30)+
+  geom_vline(xintercept=280)+#261+19
+  geom_vline(xintercept=273)+#254+19
+  geom_vline(xintercept=244)#300-56
+plotQualityProfile(fnRs[1:6])+
+  geom_hline(yintercept=30)+
+  geom_vline(xintercept=225)#300-75
 
 #Identify Primers
-#primers: 5.8S-Fun/ITS4-Fun
+#forward primer: GTGYCAGCMGCCGCGGTAA
+#reverse primer: GGACTACNVGGGTWTCTAAT
 
-#5.8S_FUN+adapt
-#CACTCTTTCCCTACACGACGCTCTTTCGATCTAACTTTYRRCAAYGGATCWCT
-#primer should be AACTTTYRRCAAYGGATCWCT
+#515F + adapt
+#CACTCTTTCCCTACACGACGCTCTTTCGATCTGTGYCAGCMGCCGCGGTAA
+#806R + adapt
+#GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCTGGACTACNVGGGTWTCTAAT
 
-#ITS4_FUN+adapt
-#GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCTAGCCTCCGCTTATTGATATGCTTAA
-#primer should be AGCCTCCGCTTATTGATATGCTTAART
+#amplicon should be 390bp based on earth microbiome prooject. but based on our previous runs the final amplicons are 253 (maybe b/c they don't have primers/adapters, but I didn't check)
 
-#amplicon should be 267-511 bp, with a mean of 394.2 bp
-
-FWD <- "AACTTTYRRCAAYGGATCWCT" 
-REV <- "AGCCTCCGCTTATTGATATGCTTAART" 
+FWD <- "GTGYCAGCMGCCGCGGTAA" 
+REV <- "GGACTACNVGGGTWTCTAAT" 
 
 #verify that we have the right primers and correct orientation 
 allOrients <- function(primer) {
@@ -102,10 +114,11 @@ fnRs.filtN <- file.path(path,"filtN", basename(fnRs))
 filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE)
 
 #For roots
-filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE, trimRight = c(44,47))#. I used 44,47. from phrag dataset soil is trimRight = c(50,90); roots1 is trimRight = c(50,95), roots2 is trimRight = c(50,90)
+#filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE, trimRight = c(28,75))
+filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE, trimRight = c(56,75)) #try more aggressive trimming due b/c we are getting 254 rather than 253 length, that is odd. It is becaue there are 301 bp not 300, but in any case If I'm trimming more than abou 10 bp off the end, I should over trim so that I'm not trimming only part of the primer. Because if I leave 1-2 bp of primer after trimming, it won't get recongized as primer and it won't get trimmed. I will use this!
 
 #For soil
-filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE, trimRight = c(4,53))#I used 4,52. first tried 20,80
+filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE, trimRight = c(51,80))
 
 
 #Count the number of times the primers appear in the forward and reverse read, while considering all possible primer orientations. Identifying and counting the primers on one set of paired end FASTQ files is sufficient, assuming all the files were created using the same library preparation, so we'll just process the first sample.
@@ -161,15 +174,27 @@ sample.names <- unname(sapply(cutFs, get.sample.name))
 head(sample.names)
 
 #green is mean, median is solid peach (go with median >=30)
-#note: I just realized that the primer is taken off, so the forward primer is 21 and cutadapt took off 21 from all the forward reads so the read length is 279 after the untrimmed go through. so I should get the x value and then do 279-x, not 300-x. and the reverse primer is 27bp, so 273-x
-plotQualityProfile(cutFs[7:12])+ 
-  geom_vline(xintercept=275)+ #279-235=44; 279-275=4
-  geom_hline(yintercept=30)
+#note: I just realized that the primer is taken off, so the forward primer is 19 and cutadapt took off 19 from all the forward reads so the read length is 281 after the untrimmed go through. so I should get the x value and then do 281-x, not 300-x. and the reverse primer is 20bp, so 280-x (really should be 301-19=282 and 301-20=281)
+plotQualityProfile(cutFs[31:36])+ 
+  geom_vline(xintercept=281)+ #281- taking into consideration the forward primer
+  geom_hline(yintercept=30)+
+  geom_vline(xintercept=261)+ #taking into consideration the read through reverse primer
+  geom_vline(xintercept=254)+ #the amplicon should be mostly 253
+  #geom_vline(xintercept=225)#trying more aggressive trimming roots
+  geom_vline(xintercept=230) #soils
+#for roots try trim at 281-253=28, then try trimming at 281-225=56
+#for soil, trim at 282-230=52, do 51 just to make it the same total amount trimmed as the roots
 
-plotQualityProfile(cutRs[55:60])+
-  geom_vline(xintercept=220)+ #273-226=47; 273-220=53
-  geom_hline(yintercept=30)
+plotQualityProfile(cutRs[1:6])+
+  geom_vline(xintercept=280)+ #280-
+  geom_hline(yintercept=30)+
+  geom_vline(xintercept=261)+
+  geom_vline(xintercept=254)+
+  #geom_vline(xintercept=205)#roots
+  geom_vline(xintercept=200)#soils
 
+#for roots trim, due to low quality, at 280-205=75
+#for soil, trim at 281-200=81, do 80 to make it the same total amount trimmed as the roots
 
 #filter and trim
 filtFs <- file.path(path.cut, "filtered", basename(cutFs))
@@ -181,11 +206,12 @@ filtRs <- file.path(path.cut, "filtered", basename(cutRs))
 #start 10pm, end 10:06
 #trimming low quality bases off at the first step results in over 2* the number of reads!
 #I get about 1000 more reads per samples when using 85,75, but below after joining paired reads it is more variable
-#outroots7570 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  # on windows, set multithread = FALSE
-outroots4447 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  # on windows, set multithread = FALSE
-#outsoil2080 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  
-outsoil453 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  
-head(outroots8575)
+outroots2875 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  # on windows, set multithread = FALSE
+outroots5675 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  
+outsoil5180 <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  
+head(outroots2875)
+head(outroots5675)
+head(outsoil5180)
 cbind(outroots4447[,2],outroots8575[,2])
 #write.csv(outroots, "readsout.csv")
 
@@ -220,14 +246,13 @@ seqtab.soil <- makeSequenceTable(mergers)
 
 #Track reads through pipeline
 getN <- function(x) sum(getUniques(x))
-#trackroots7570<-cbind(outroots7570, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN)) 
-#trackroots8575<-cbind(outroots8575, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN))
-trackroots4447<-cbind(outroots4447, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN))
-#tracksoil2080<-cbind(outsoil2080, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN)) 
-tracksoil453<-cbind(outsoil453, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN)) 
-head(trackroots4447)
-head(tracksoil453)
-hist(trackroots8575[,5]-trackroots7570[,5],breaks=65)
+trackroots2875<-cbind(outroots2875, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN))
+trackroots5675<-cbind(outroots5675, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN))
+tracksoil5180<-cbind(outsoil5180, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN)) 
+head(trackroots2875)
+head(trackroots5675)
+head(tracksoil5180)
+hist(trackroots5675[,5]-trackroots2875[,5],breaks=65)
 sort(trackroots4447[,5]-trackroots7570[,5])
 
 
@@ -236,23 +261,25 @@ seqtab.all<-mergeSequenceTables(seqtab.roots,seqtab.soil)
 
 #remove chimeras, start 11:30, end 11:31
 seqtab.nochim <- removeBimeraDenovo(seqtab.all, method="consensus", multithread=TRUE, verbose=TRUE)
-#seqtab.nochim <- removeBimeraDenovo(seqtab.soil, method="consensus", multithread=TRUE, verbose=TRUE)
+seqtab.nochim5675 <- removeBimeraDenovo(seqtab.roots, method="consensus", multithread=TRUE, verbose=TRUE)
+seqtab.nochim2875
+seqtab.nochim5180s <- removeBimeraDenovo(seqtab.soil, method="consensus", multithread=TRUE, verbose=TRUE)
+seqtab.nochim5675[1:5,1:5]
+seqtab.nochim2875[1:5,1:5]
+
 
 write.csv(seqtab.nochim, "seqtab.nochim.csv")
 rownames(seqtab.nochim)
 
 #inspect distribution of sequence length
-plot(table(nchar(getSequences(seqtab.nochim)))) 
-#Summary of trimming choices and thought process. I realized partway through that the plots I was looking at to determine where to trim had the primers removed, so I was doing the math wrong. Subtracting from 300bp when I should have been subtracting from 279bp (for example for forward reads), so I was over trimming. Interestingly, when you over trim you result in a greater number of reads out, however, you lose the long reads. Here are the results:
+plot(table(nchar(getSequences(seqtab.nochim5180s))))
+table(nchar(getSequences(seqtab.nochim5180s)))
 #Roots
-#85,75: 316 is the most common length. odd that the max sequence length is 382.i wondered if this was an artifact of the large trimming I did due to crappy forward and reverse reads, but by my calcs that would still leave me with (300-85)+(300-75)-12=428.
-#75,70: similar in reads out compared to 85,75. Sometimes 85,75 is better, sometimes 75,70 is better. On average 75,70 is better but that is just because there is one sample r50 that has 60,000 more reads from 75,70. However if you look at just how many samples got more reads then 85,75 wins out. However, looking at the histogram of sequence lengths, the right side of the histogram is not really tapering much for the 85,75 run, so we are missing a good chunk of longer sequences. 316 is most common and 397 is max.
-#65,65: fewer reads out compared to above. 316 is most common length and 412 is max length
-#44,47: much fewer reads compared to 75,70, like 7000 fewer reads ballpark per sample. 316 is most common, max is 451. interestingly, the one sample (r143) around 8000 reads that would be a cutoff for rarefaction has 8562 reads in 75/70 and 7507 in 44,47, so not too much different (so the reduction is kind of proportional to the number of reads). The histogram of read lengths really tapers off now, it starts tapering at around 439. I will use this!
+#using the first 2875 trimming it was 20960 are 254, 544 are 255, max 460 (but only 1 sequence)
+#using 5675 trimming it was 19799 are 253, 2157 are 254, max 440 (but only 1 sequence). When I looked at the sequences the 2875 ones were 254 and the last base pair is an A, the 5675 ones were 253 and were identical to the bp 1-253 from the first try. Thus it is true that the first run is just adding an A to the end of the sequences, this A is from the reverse primer. OOH It it because the reads are actually 301 bp, not 300!!!
 
 #Soils:
-#I used 20,80 and got mode of 316, max of 442
-#Then realized above and tried 4,53 and got mode 216, max 485. I'm getting about 2000 fewer reads in 4,53 compared to 20,80 (but on the samples that would be a rarefaction cutoff, the difference is about 1000 or 500), but a lot of "tail" on the long read end
+#using 5180 trimming it was 36121 are 253, 3832 are 254, max 457 (only 2 sequences)
 
 #normally do track here but not if you merged multiple lanes
 #trackroots <- cbind(outroots2, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
@@ -381,7 +408,7 @@ ggplot(data=datITSSdf.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_poi
 #threshold .2
 #datITSSdf.pa <- data.frame(pa.pos=taxa_sums(datITSS.pa.pos), pa.neg=taxa_sums(datITSS.pa.neg),contaminant=contamdf.prevITS5$contaminant)
 #ggplot(data=datITSSdf.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_point() +
-  xlab("Prevalence (Negative Controls)") + ylab("Prevalence (True Samples)")
+xlab("Prevalence (Negative Controls)") + ylab("Prevalence (True Samples)")
 
 
 #I will use a threshold = 0.1 (in phrag suff I think I've used .2). (when I did roots alone I used 0.1) 
@@ -581,7 +608,7 @@ ggplot(data=m1, aes(x=Treatment, y=mean,color=SampleType))+
   geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2,size=.5)+
   geom_point(size=1.8,show.legend = FALSE)+#, aes(group=Seed.Origin, fill=Seed.Origin, shape=Seed.Origin, color = Seed.Origin)
   ylab("Pathogens %")+
-#  ylim(5,60)+
+  #  ylim(5,60)+
   theme_classic()+
   theme(line=element_line(size=.3),text=element_text(size=9),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
   facet_wrap(vars(CommunityType),strip.position = "bottom")
