@@ -7,7 +7,7 @@ rig default 4.4-x86_64
 #For each set, run through fist part of script, CHANGE DIRECTORY folder
 
 load("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspacebioinformatics16S.RData")
-save.image(file = "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspacebioinformatics16S.RData")
+save.image(file = "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspacebioinformatics16Sb.RData")
 
 # BiocManager::install(version = '3.16') #old
 # BiocManager::version() #the one for R 4.4 is 3.19
@@ -272,8 +272,8 @@ write.csv(seqtab.nochim, "seqtab.nochim.csv")
 rownames(seqtab.nochim)
 
 #inspect distribution of sequence length
-plot(table(nchar(getSequences(seqtab.nochim5180s))))
-table(nchar(getSequences(seqtab.nochim5180s)))
+plot(table(nchar(getSequences(seqtab.nochim))))
+table(nchar(getSequences(seqtab.nochim)))
 #Roots
 #using the first 2875 trimming it was 20960 are 254, 544 are 255, max 460 (but only 1 sequence)
 #using 5675 trimming it was 19799 are 253, 2157 are 254, max 440 (but only 1 sequence). When I looked at the sequences the 2875 ones were 254 and the last base pair is an A, the 5675 ones were 253 and were identical to the bp 1-253 from the first try. Thus it is true that the first run is just adding an A to the end of the sequences, this A is from the reverse primer. OOH It it because the reads are actually 301 bp, not 300!!!
@@ -289,28 +289,64 @@ table(nchar(getSequences(seqtab.nochim5180s)))
 
 ###### Assign taxonomy ######
 
-# to get the fasta file gohere:https://unite.ut.ee/repository.php and be sure to do "general release fasta" not qiime. This is 4/4/24 releae, the same one I used for the mangrove project. Note that the zip files is named slightly differently than the actual fasta when you unzip it (_s_ vs _dyanmic_s_)
-#unite.ref <- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAMarsh/Survey/Stats/Gradient/QIIME2/sh_general_release_dynamic_s_04.02.2020.fasta" #
-#unite.ref <- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/Unite/sh_general_release_dynamic_25.07.2023.fasta" #
-unite.ref <- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAMarsh/Mangroves/Stats/sh_general_release_dynamic_s_04.04.2024.fasta"
+#I could use greengenes (old, what I've done before) or greengenes2 https://greengenes2.ucsd.edu/ or silva (what the tutorial I've been following uses)
+#I was going to try greengenes2 b/c it is smaller/less computationally intensive and now updated (which was the former complaint about greengenes that it was not updated since 2013), however there were threads online about issues with formatting. So I will try silva. 
 
-#start 2:23, done  (70 min)
-taxa<-assignTaxonomy(seqtab.nochim, unite.ref, multithread = TRUE, minBoot=70, tryRC = TRUE,outputBootstraps=T)
+#Thread saying updated greengenes is not yet ready for dada2: https://github.com/benjjneb/dada2/issues/1680#issuecomment-1724495374
+
+#Silva citation
+#McLaren, M. R., & Callahan, B. J. (2021). Silva 138.1 prokaryotic SSU taxonomic training data formatted for DADA2 [Data set]. Zenodo. https://doi.org/10.5281/zenodo.4587955
+
+#info on how it takes two steps to assign species to 16S short read data: https://github.com/benjjneb/dada2/issues/1256
+#and the tutorial: https://benjjneb.github.io/dada2/tutorial.html, https://benjjneb.github.io/dada2/assign.html
+
+silva.ref<-"/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/Silva/silva_nr99_v138.1_train_set.fa.gz"
+
+#Try it on 10 sequences to see if it needs tryRC=T
+sq10 <- getSequences(seqtab.nochim)[1:10]
+sq10a <- assignTaxonomy(sq10, silva.ref, multithread = TRUE, minBoot=70,outputBootstraps=T)
+View(sq10a$tax)
+#worked!
+
+#start 10:25am, done 10:45 (20 min!! why was that so fast?)
+taxa<-assignTaxonomy(seqtab.nochim, silva.ref, multithread = TRUE, minBoot=70, outputBootstraps=T) #, tryRC = TRUE only needed if you want to try the reverse complement b/c things aren't getting assigned
 taxaonly<-taxa$tax
 
-write.csv(taxa,"/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/taxa.csv")
+
+silvaspass.ref<-"/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/Silva/silva_species_assignment_v138.1.fa.gz"
+
+#taxaonly.plus<-addSpecies(taxaonly, silvaspass.ref, n=1000, verbose=T) #the default n of 100000 gave me an error that my 32Gb of memory was reached. So I tried 3000, same error. Tried 2000 same error. Tried 1000, same error. I will try a workaround I found here: https://github.com/benjjneb/dada2/issues/733
+
+chunk.size <- 4000
+chunks <- split(c(1:nrow(taxaonly)),
+                sort(c(1:nrow(taxaonly))%%ceiling(nrow(taxaonly)/chunk.size)))
+
+#start 11:04am, end ? I checked at 2:30pm and it was done (3.5 hrs)
+chunks.species <- lapply(chunks,
+                         function(x){
+                           return(addSpecies(taxaonly[x,],
+                                             refFasta = silvaspass.ref, verbose = TRUE))
+                         })
+taxaonly.species <- do.call(rbind, chunks.species)
+View(taxaonly.species)
+
+#write.csv(taxa,"/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/taxa.csv")
+
+
+
+
 
 
 ###### Create tax table for Phyloseq ######
 
-sequences<-as.data.frame(rownames(taxaonly))
+sequences<-as.data.frame(rownames(taxaonly.species))
 rownames(sequences)<-paste0("OTU",1:nrow(sequences))
 sequences$OTU<-rownames(sequences)
 colnames(sequences)<-c("sequence","OTUID")
 #OTUID<-as.data.frame(sequences$OTUID)
 
-taxa1<-cbind(as.data.frame(sequences$OTUID), taxaonly)
-write.csv(taxa1,"/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/taxa_OTUID.csv")
+taxa1<-cbind(as.data.frame(sequences$OTUID), taxaonly.species)
+#write.csv(taxa1,"/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/taxa_OTUID.csv")
 
 #OTUID<-sequences$OTUID
 rownames(taxa1)<-sequences$OTUID
@@ -368,21 +404,21 @@ otu_table(phy)[1:5,1:6]
 
 #### Decontam ####
 
-datITS<-phy
+dat16S<-phy
 
-print(as.data.frame(unique(tax_table(datITS)[,"Kingdom"])),row.names=F)
+print(as.data.frame(unique(tax_table(dat16S)[,"Kingdom"])),row.names=F)
 
 ####Filter and remove contaminant sequences with decontam()####
 #note!!!! if you filter with subset_taxa and a !=, it will NOT return any rows that are NA, so you always have to do an "or NA" in the statement
 
 #Filter samples with really low numbers of reads (<1000), not sure if this is necessary for the prevalence method but it is kind of weird that some of my actual samples had lower number of reads than the negative controls. This could be because the pcr failed and we put them in anyway "just in case" but if the pcr failed and all we got was contamination, then that skews the ability to see that they are contaminated. here it was only 1 sample
-sort(sample_sums(datITS))
+sort(sample_sums(dat16S))
 
-datITSS<-datITS%>%
-  subset_samples(sample_sums(datITS)>900) 
-datITSS
+dat16SS<-dat16S%>%
+  subset_samples(sample_sums(dat16S)>900) 
+dat16S
 
-sample_data(datITSS)
+sample_data(dat16SS)
 
 dfITS <- as.data.frame(sample_data(datITSS)) # Put sample_data into a ggplot-friendly data.frame
 dfITS$LibrarySize <- sample_sums(datITSS)
@@ -487,6 +523,12 @@ dat17b<-dat17%>%
   full_join(richITS2)
 dat17<-dat17b
 
+
+
+
+###### Function ######
+
+#for function look into the microeco package using the FAPROTAX database: https://chiliubio.github.io/microeco_tutorial/explainable-class.html
 
 
 
