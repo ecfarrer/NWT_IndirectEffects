@@ -7,7 +7,7 @@ rig default 4.4-x86_64
 #For each set, run through fist part of script, CHANGE DIRECTORY folder
 
 load("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspacebioinformatics16S.RData")
-save.image(file = "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspacebioinformatics16Sb.RData")
+save.image(file = "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspacebioinformatics16S.RData")
 
 # BiocManager::install(version = '3.16') #old
 # BiocManager::version() #the one for R 4.4 is 3.19
@@ -303,9 +303,9 @@ table(nchar(getSequences(seqtab.nochim)))
 silva.ref<-"/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/Silva/silva_nr99_v138.1_train_set.fa.gz"
 
 #Try it on 10 sequences to see if it needs tryRC=T
-sq10 <- getSequences(seqtab.nochim)[1:10]
-sq10a <- assignTaxonomy(sq10, silva.ref, multithread = TRUE, minBoot=70,outputBootstraps=T)
-View(sq10a$tax)
+# sq10 <- getSequences(seqtab.nochim)[1:10]
+# sq10a <- assignTaxonomy(sq10, silva.ref, multithread = TRUE, minBoot=70,outputBootstraps=T)
+# View(sq10a$tax)
 #worked!
 
 #start 10:25am, done 10:45 (20 min!! why was that so fast?)
@@ -335,17 +335,40 @@ View(taxaonly.species)
 
 
 
+###### Take out mitochondria and chloroplasts ######
+#from https://github.com/benjjneb/dada2/issues/797 and https://github.com/benjjneb/dada2/issues/892 and https://blogs.oregonstate.edu/earthmotes/2021/09/28/dada2-pipeline-for-16s-datasets-in-r/
 
+#files:
+taxaonly.species
+seqtab.nochim
+
+#581 chloros removed
+is.chloro <- taxaonly.species[,"Order"] %in% "Chloroplast"
+seqtab.nochim.nochloro <- seqtab.nochim[,!is.chloro]
+dim(seqtab.nochim.nochloro)
+taxaonly.species.nochloro <- taxaonly.species[!is.chloro,]
+dim(taxaonly.species.nochloro)
+
+#2126 mitos removed
+is.mito <- taxaonly.species.nochloro[,"Family"] %in% "Mitochondria"
+seqtab.nochim.nochloromito <- seqtab.nochim.nochloro[,!is.mito]
+taxaonly.species.nochloromito <- taxaonly.species.nochloro[!is.mito,]
+dim(seqtab.nochim.nochloromito)
+dim(taxaonly.species.nochloromito)
+
+#final cleaned data:
+seqtab.nochim.nochloromito
+taxaonly.species.nochloromito
 
 ###### Create tax table for Phyloseq ######
 
-sequences<-as.data.frame(rownames(taxaonly.species))
+sequences<-as.data.frame(rownames(taxaonly.species.nochloromito))
 rownames(sequences)<-paste0("OTU",1:nrow(sequences))
 sequences$OTU<-rownames(sequences)
 colnames(sequences)<-c("sequence","OTUID")
 #OTUID<-as.data.frame(sequences$OTUID)
 
-taxa1<-cbind(as.data.frame(sequences$OTUID), taxaonly.species)
+taxa1<-cbind(as.data.frame(sequences$OTUID), taxaonly.species.nochloromito)
 #write.csv(taxa1,"/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/taxa_OTUID.csv")
 
 #OTUID<-sequences$OTUID
@@ -360,7 +383,7 @@ phy.tax
 
 
 ###### Create sample data table ######
-sam<-as.data.frame(rownames(seqtab.nochim))
+sam<-as.data.frame(rownames(seqtab.nochim.nochloromito))
 names(sam)<-"SampleNumber"
 
 sam2<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Data/NWTrootssoil2023.csv") #roots only is NWTroots2023.csv
@@ -378,7 +401,7 @@ rownames(phy.sam)<-sam3$SampleNumber
 
 
 ###### Create official ASV Table ######
-OTU.Table<-as.data.frame(seqtab.nochim)
+OTU.Table<-as.data.frame(seqtab.nochim.nochloromito)
 colnames(OTU.Table)<-sequences$OTUID
 #temp<-1:dim(OTU.Table)[2] #16535 OTUs
 #colnames(OTU.Table)<-paste("OTU",temp,sep="")
@@ -411,69 +434,83 @@ print(as.data.frame(unique(tax_table(dat16S)[,"Kingdom"])),row.names=F)
 ####Filter and remove contaminant sequences with decontam()####
 #note!!!! if you filter with subset_taxa and a !=, it will NOT return any rows that are NA, so you always have to do an "or NA" in the statement
 
-#Filter samples with really low numbers of reads (<1000), not sure if this is necessary for the prevalence method but it is kind of weird that some of my actual samples had lower number of reads than the negative controls. This could be because the pcr failed and we put them in anyway "just in case" but if the pcr failed and all we got was contamination, then that skews the ability to see that they are contaminated. here it was only 1 sample
+#Filter samples with really low numbers of reads (about <1000), not sure if this is necessary for the prevalence method but it is kind of weird that some of my actual samples had lower number of reads than the negative controls. This could be because the pcr failed and we put them in anyway "just in case" but if the pcr failed and all we got was contamination, then that skews the ability to see that they are contaminated. here it was only 2 samples at 20 (s110) and 247 (s113) reads
 sort(sample_sums(dat16S))
 
 dat16SS<-dat16S%>%
-  subset_samples(sample_sums(dat16S)>900) 
-dat16S
+  subset_samples(sample_sums(dat16S)>1000)
+dat16SS
 
 sample_data(dat16SS)
 
-dfITS <- as.data.frame(sample_data(datITSS)) # Put sample_data into a ggplot-friendly data.frame
-dfITS$LibrarySize <- sample_sums(datITSS)
-dfITS <- dfITS[order(dfITS$LibrarySize),]
-dfITS$Index <- seq(nrow(dfITS))
-ggplot(data=dfITS, aes(x=Index, y=LibrarySize, color=Sample_or_Control)) + geom_point()
+df16S <- as.data.frame(sample_data(dat16SS)) # Put sample_data into a ggplot-friendly data.frame
+df16S$LibrarySize <- sample_sums(dat16SS)
+df16S <- df16S[order(df16S$LibrarySize),]
+df16S$Index <- seq(nrow(df16S))
+ggplot(data=df16S, aes(x=Index, y=LibrarySize, color=Sample_or_Control)) + geom_point()
 
-contamdf.prevITS <- isContaminant(datITSS, method="prevalence", neg="is.neg")
-table(contamdf.prevITS$contaminant)#default threshold is .1
-#contamdf.prevITS5 <- isContaminant(datITSS, method="prevalence", neg="is.neg",threshold = .2)
-#table(contamdf.prevITS5$contaminant)
-
-datITSS.pa <- transform_sample_counts(datITSS, function(abund) 1*(abund>0))
-datITSS.pa.neg <- prune_samples(sample_data(datITSS.pa)$is.neg == TRUE, datITSS.pa)
-datITSS.pa.pos <- prune_samples(sample_data(datITSS.pa)$is.neg == FALSE, datITSS.pa)
+# contamdf.prev16S <- isContaminant(dat16SS, method="prevalence", neg="is.neg")
+# table(contamdf.prev16S$contaminant)#default threshold is .1
+contamdf.prev16S05 <- isContaminant(dat16SS, method="prevalence", neg="is.neg",threshold = .05)
+table(contamdf.prev16S05$contaminant)
+# 
+dat16SS.pa <- transform_sample_counts(dat16SS, function(abund) 1*(abund>0))
+dat16SS.pa.neg <- prune_samples(sample_data(dat16SS.pa)$is.neg == TRUE, dat16SS.pa)
+dat16SS.pa.pos <- prune_samples(sample_data(dat16SS.pa)$is.neg == FALSE, dat16SS.pa)
 
 # Make data.frame of prevalence in positive and negative samples
-#threshold .1
-datITSSdf.pa <- data.frame(pa.pos=taxa_sums(datITSS.pa.pos), pa.neg=taxa_sums(datITSS.pa.neg),contaminant=contamdf.prevITS$contaminant)
-ggplot(data=datITSSdf.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_point() +
+#threshold .1, 1450 contaminants, 58567 not contaminants
+# dat16SSdf.pa <- data.frame(pa.pos=taxa_sums(dat16SS.pa.pos), pa.neg=taxa_sums(dat16SS.pa.neg),contaminant=contamdf.prev16S$contaminant)
+# ggplot(data=dat16SSdf.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_point() +
+#   xlab("Prevalence (Negative Controls)") + ylab("Prevalence (True Samples)")
+
+#threshold .05, 976 contaminants, 59041 not contaminants
+dat16SSdf05.pa <- data.frame(pa.pos=taxa_sums(dat16SS.pa.pos), pa.neg=taxa_sums(dat16SS.pa.neg),contaminant=contamdf.prev16S05$contaminant)
+ggplot(data=dat16SSdf05.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_point() +
   xlab("Prevalence (Negative Controls)") + ylab("Prevalence (True Samples)")
 
-#threshold .2
-#datITSSdf.pa <- data.frame(pa.pos=taxa_sums(datITSS.pa.pos), pa.neg=taxa_sums(datITSS.pa.neg),contaminant=contamdf.prevITS5$contaminant)
-#ggplot(data=datITSSdf.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_point() +
-xlab("Prevalence (Negative Controls)") + ylab("Prevalence (True Samples)")
 
+#I will use a threshold = 0.05. I like the results from 0.05 better, there is not a super clean break point where to draw the line, but 0.05 is closer to the faint break point. Also we have read issues, so using a lower cutoff will generate more reads which we desperately need. However, when I did fungi I used 0.1, so that is inconsistent but so be it.
 
-#I will use a threshold = 0.1 (in phrag suff I think I've used .2). (when I did roots alone I used 0.1) 
-
-#take out contaminants and filter negative controls, there were 98 contaminants
-datITSS2 <- prune_taxa(!contamdf.prevITS$contaminant, datITSS)
-datITSS3 <-datITSS2 %>%
+#Take out contaminants and filter negative controls
+dat16SS2 <- prune_taxa(!contamdf.prev16S05$contaminant, dat16SS)
+dat16SS3 <-dat16SS2 %>%
   subset_samples(is.neg==FALSE)%>%
   filter_taxa(function(x) sum(x) > (0), prune=T) #odd some taxa additionally are removed after removing the contaminants. these must be taxa only found in the negative controls (which for some reason are not called contaminants) (??)
 
-min(sample_sums(datITSS4))
-sort(sample_sums(datITSS3))
 
-#Filter out root samples and samples with low sampling depth. THis is tough, I could rarefy to 4476 and only delete 4 low samples or I could rarefy to 6131 and delete 6 low samples. I will choose 4476 so that I can have more root and soil samples from the same plots
-datITSS4 <-datITSS3 %>%
-  #subset_samples(SampleType=="soil")%>%
-  subset_samples(sample_sums(datITSS3)>4000) %>%
+
+
+#Filter out Eukaryote and taxa with NA as kingdom It makes sense to do this here before rarefaction decisions
+dat16SS3a<-dat16SS3%>%
+  subset_taxa(Kingdom=="Archaea"|Kingdom=="Bacteria")%>%
+  #subset_taxa(is.na(Rank3)==T|Rank3!="c__Chloroplast")%>%
+  #subset_taxa(is.na(Rank5)==T|Rank5!="f__mitochondria")%>%
   filter_taxa(function(x) sum(x) > (0), prune=T)
 
 
-####### Rarefy to 4476 ######
-#This takes out samples: r138, r137, r139 (this was taken out before decontam), s23,  s48
-datITSS4
-datITSS5<-datITSS4%>%
-  rarefy_even_depth(sample.size=min(sample_sums(datITSS4)),rngseed=10,replace=F)%>%
+min(sample_sums(dat16SS3a))
+sort(sample_sums(dat16SS3a))
+plot(1:50,sort(sample_sums(dat16SS3a))[1:50])
+
+
+
+#Filter out samples with low sampling depth. This is tough, we have lots of samples (all from roots) with not a lot of reads (due to lots of mitochondrial sequences). could just delete the three lowest (750,769,810) and rarefy to 1662 or I could delete the five lowest (750,769,810,1662,1769) and rarefy to 2073. the most obvious break is just deleting the lowest three. but 2000 seems like a more realistic cutoff for rarefaction
+dat16SS4 <-dat16SS3a %>%
+  #subset_samples(SampleType=="soil")%>%
+  subset_samples(sample_sums(dat16SS3a)>2000) %>%
+  filter_taxa(function(x) sum(x) > (0), prune=T)
+
+
+####### Rarefy to 2073 ######
+#This takes out samples: s110, s113 (this was taken out before decontam), r147,  r113, r143, r15, r5
+dat16SS4
+dat16SS5<-dat16SS4%>%
+  rarefy_even_depth(sample.size=min(sample_sums(dat16SS4)),rngseed=10,replace=F)%>%
   transform_sample_counts(function(x) x/sum(x) )
-datITSS5c<-datITSS4%>%
-  rarefy_even_depth(sample.size=min(sample_sums(datITSS4)),rngseed=10,replace=F)
-#2320 OTUs were removed because they are no longer present in any sample after random subsampling
+dat16SS5c<-dat16SS4%>%
+  rarefy_even_depth(sample.size=min(sample_sums(dat16SS4)),rngseed=10,replace=F)
+#21368 OTUs were removed because they are no longer present in any sample after random subsampling
 
 
 
@@ -502,17 +539,17 @@ datITSS5c<-datITSS4%>%
 
 
 #Make OTU tables, this takes a while, start 10:47-10:52
-datITSS5otu<-cbind(sample_data(datITSS5),otu_table(datITSS5))
-datITSS5cotu<-cbind(sample_data(datITSS5c),otu_table(datITSS5c))
+dat16SS5otu<-cbind(sample_data(dat16SS5),otu_table(dat16SS5))
+dat16SS5cotu<-cbind(sample_data(dat16SS5c),otu_table(dat16SS5c))
 
 
 
 
 #Richness
 
-richITS<-estimate_richness(datITSS5c, split = TRUE, measures = c("Observed", "Shannon","Chao1","Simpson","InvSimpson"))
-colnames(richITS)<-c("RichnessITS","Chao1ITS","se.chao1ITS","ShannonITS","SimpsonITS","InvSimpsonITS")
-richITS$SampleID<-rownames(richITS)
+rich16S<-estimate_richness(dat16SS5c, split = TRUE, measures = c("Observed", "Shannon","Chao1","Simpson","InvSimpson"))
+colnames(rich16S)<-c("Richness16S","Chao116S","se.chao116S","Shannon16S","Simpson16S","InvSimpson16S")
+rich16S$SampleID<-rownames(rich16S)
 #richITS2<-separate(richITS,SampleID,c(NA,"Plot"),"s")
 #richITS2$Plot<-as.numeric(richITS2$Plot)
 #richITS2<-richITS%>%
@@ -530,88 +567,62 @@ dat17<-dat17b
 
 #for function look into the microeco package using the FAPROTAX database: https://chiliubio.github.io/microeco_tutorial/explainable-class.html
 
+install.packages("microeco")
+library(microeco)
 
 
-###### FUNguild ######
-#https://github.com/UMNFuN/FUNGuild
-#https://github.com/brendanf/FUNGuildR
-devtools::install_github("brendanf/FUNGuildR")
-library(FUNGuildR)
+?trans_func
 
-#The weird thing about FUNGuildR is that for some taxa, like when I have Fusarium equiseti it matches to Nectriaceae rather than Fusarium in the database. When I used the FUNGUILD in the terminal, it worked better and matched to the lowest taxonomic level. 
+#I'll use the cleaned, rarefied, count phyloseq object
+dat16SS5c
 
-#Trying with FUNguildR
-# funguild<-data.frame(tax_table(datITSS5c))
-# funguild2<-funguild%>%
-#   unite("Kingdom_Species",sep=";",remove=T)
-# colnames(funguild2)<-"Taxonomy"
-# funguild2$OTUID<-rownames(funguild2)
-# funguild3<-data.frame(OTUID=funguild2$OTUID,Taxonomy=funguild2$Taxonomy)
-# head(funguild3)
-# funguild4<-funguild_assign(funguild3)
-# View(funguild4)
+me_otu<-data.frame(t(otu_table(dat16SS5c)))
+me_tax<-data.frame(tax_table(dat16SS5c))
+me_tax2<-tidy_taxonomy(me_tax)
+  #note the species column only has species, not genus and species, not sure if this will be a problem
+me_sam<-data.frame(sample_data(dat16SS5c))
+  
+mt <- microtable$new(otu_table = me_otu, sample_table = me_sam, tax_table = me_tax2)
+mt
 
-#I don't need this but I'm curious if it differs from the online one here: http://www.stbates.org/funguild_db.php   it doesn't seem to differ...
-# fung <- get_funguild_db()
-# fung[fung$taxon=="Meliniomyces",]
+mt$tidy_dataset() #it was already tidy, this didn't do anything
 
-#Trying in terminal
-temp<-data.frame(tax_table(datITSS5c))
-temp2<-temp%>%
-  unite("Kingdom_Species",sep=";",remove=T)
-head(temp2)
-colnames(temp2)<-"taxonomy"
+mt$sample_sums() %>% range
 
-datITSS5cfunguild<-cbind(t(otu_table(datITSS5c)),temp2)
-datITSS5cfunguild[1:5,155:157]
-datITSS5cfunguild[1:5,1:5]
-write.csv(datITSS5cfunguild,"/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/datITSS5cfunguild.csv")
-#then open the file and write "OTU ID" in the first cell
+t2 <- trans_func$new(mt)
+t2
+t2$cal_spe_func(prok_database = "FAPROTAX")
+t2$res_spe_func[1:5, 1:22]
+colSums(t2$res_spe_func)
 
-#then open terminal and navigate to folder and run
-#note when you download the py file from github make sure you don't just download (save as) the html file, make sure it's a python file, open the code and click the download raw file button
-python Guilds_v1.1.py -otu datITSS5cfunguild.csv -m -u
+t2$cal_spe_func_perc(abundance_weighted = TRUE)
+#the result is store in t2$res_spe_func_perc
+t2$res_spe_func_perc
 
-#then open datITSS5cfunguild.guilds.txt and delete OTU ID in the first cell
+t2$trans_spe_func_perc()
+#Transformed long format table is stored in t2$res_spe_func_perc_trans
+t2$res_spe_func_perc_trans
+t2$plot_spe_func_perc()
 
-funguild<-read.delim2("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/datITSS5cfunguild.guilds.txt",header=T,row.names = 1)
-head(funguild)
-funguild[20:25,300:323]
-funguild$OTU<-rownames(funguild)
-funguild
-funguild$OTUnum <- as.numeric(gsub("^.{0,3}", "", funguild$OTU))
-funguild2<-funguild%>%
-  arrange(OTUnum)
-funguild2[1:5,320:325]
-funguild2[1:5,1:5]
 
-#comparing the two, often the results for guild or trophic mode aren't different, but sometimes the FUNguildR result is actually more specific/narrowed down which is weird, but I guess the database does not automatically have the family have all the charactertics of all genera. so if not a lot is know just about a family you might get only one trophic mode, whereas for a genus you get two b/c there are more studies at the genus level. this is odd behavior but I think doing it to genus is better
-# cbind(funguild2$Taxon,funguild4$taxon)
-# i<-258
-# funguild2$taxonomy[i]
-# funguild4$Taxonomy[i]
-# funguild2$Taxon[i]
-# funguild4$taxon[i]
-# funguild2$Guild[i] #terminal
-# funguild4$guild[i] #FUNguildR
-# funguild2$Trophic.Mode[i] #terminal
-# funguild4$trophicMode[i] #FUNguildR
-# funguild2[i,]
-# funguild4[i,]
+#clone the dataset (I still dont understand this)
+tmp_mt <- clone(mt)
+
+# transpose res_spe_func_perc to be a data.frame like taxonomic abundance
+tmp <- as.data.frame(t(t2$res_spe_func_perc), check.names = FALSE)
+
+# assign the table back to taxa_abund list for further analysis
+tmp_mt$taxa_abund$func <- tmp
+
+# select the "func" in taxa_abund list in trans_diff
+t3 <- trans_diff$new(dataset = tmp_mt, method = "anova", group = "CommunityType", taxa_level = "func")
+t3$plot_diff_abund(add_sig = T) + ggplot2::ylab("Relative abundance (%)")
 
 
 
 
-#rarefied to 4476
-colSums(funguild2[,2:5])
-funguild2[c("Trophic.Mode","Confidence.Ranking")]
-funguild2[1:5,315:325]
 
-funguild2%>%filter(Trophic.Mode==("Pathotroph"))
-funguild2%>%filter(Trophic.Mode==("Symbiotroph"))
 
-#funguild_query doesn't work on the terminal output b/c the column names are slightly different from the FUNguildR output
-#funguild_query("*Saprotroph*", "Trophic.Mode", db = funguild2)
 
 funguild3<-funguild2%>%
   filter(Trophic.Mode%in%c("Symbiotroph","Pathotroph","Saprotroph"))%>%
