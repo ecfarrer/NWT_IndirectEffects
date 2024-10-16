@@ -514,6 +514,23 @@ dat16SS5c<-dat16SS4%>%
 
 
 
+###### Doing a second dataset of filtering and rarefying at a higher value for soil samples ######
+dat16SS4_r4903 <-dat16SS3a %>%
+  #subset_samples(SampleType=="soil")%>%
+  subset_samples(sample_sums(dat16SS3a)>4900) %>%
+  filter_taxa(function(x) sum(x) > (0), prune=T)
+
+#Rarefy to 4903
+#This takes out samples: s110, s113 (this was taken out before decontam), r147,  r113, r143, r15, r5, r1, r149, r153, r151, r154, r139, r158, r64, r2, r148, r7
+dat16SS5_r4903<-dat16SS4_r4903%>%
+  rarefy_even_depth(sample.size=min(sample_sums(dat16SS4_r4903)),rngseed=10,replace=F)%>%
+  transform_sample_counts(function(x) x/sum(x) )
+dat16SS5c_r4903<-dat16SS4_r4903%>%
+  rarefy_even_depth(sample.size=min(sample_sums(dat16SS4_r4903)),rngseed=10,replace=F)
+#11575 OTUs were removed because they are no longer present in any sample after random subsampling
+
+
+
 
 #Adding to the sample data with dat from dat17
 #need to open and run LoadingPlantSoilData.R script
@@ -542,6 +559,8 @@ dat16SS5c<-dat16SS4%>%
 dat16SS5otu<-cbind(sample_data(dat16SS5),otu_table(dat16SS5))
 dat16SS5cotu<-cbind(sample_data(dat16SS5c),otu_table(dat16SS5c))
 
+dat16SS5otu_r4903<-cbind(sample_data(dat16SS5_r4903),otu_table(dat16SS5_r4903))
+dat16SS5cotu_r4903<-cbind(sample_data(dat16SS5c_r4903),otu_table(dat16SS5c_r4903))
 
 
 
@@ -555,6 +574,11 @@ rich16S$SampleID<-rownames(rich16S)
 #richITS2<-richITS%>%
 #  left_join(data.frame(sample_data(datITS2rcsoil)))
 #sample_data(datITSS5c)[,]
+
+rich16S_r4903<-estimate_richness(dat16SS5c_r4903, split = TRUE, measures = c("Observed", "Shannon","Chao1","Simpson","InvSimpson"))
+colnames(rich16S_r4903)<-c("Richness16S","Chao116S","se.chao116S","Shannon16S","Simpson16S","InvSimpson16S")
+rich16S_r4903$SampleID<-rownames(rich16S_r4903)
+
 
 dat17b<-dat17%>%
   full_join(richITS2)
@@ -604,19 +628,67 @@ t2$trans_spe_func_perc()
 t2$res_spe_func_perc_trans
 t2$plot_spe_func_perc()
 
-
-#clone the dataset (I still dont understand this)
+#Clone the dataset (I still dont understand this)
 tmp_mt <- clone(mt)
 
-# transpose res_spe_func_perc to be a data.frame like taxonomic abundance
+#Transpose res_spe_func_perc to be a data.frame like taxonomic abundance
 tmp <- as.data.frame(t(t2$res_spe_func_perc), check.names = FALSE)
 
-# assign the table back to taxa_abund list for further analysis
+#Assign the table back to taxa_abund list for further analysis
 tmp_mt$taxa_abund$func <- tmp
 
-# select the "func" in taxa_abund list in trans_diff
-t3 <- trans_diff$new(dataset = tmp_mt, method = "anova", group = "CommunityType", taxa_level = "func")
-t3$plot_diff_abund(add_sig = T) + ggplot2::ylab("Relative abundance (%)")
+#Select the "func" in taxa_abund list in trans_diff, results stored in res_abund
+t3 <- trans_diff$new(dataset = tmp_mt, method = "anova", group = "SampleType", taxa_level = "func")
+t3$res_abund
+t3$plot_diff_abund(use_number=31:66,add_sig = T) + ggplot2::ylab("Relative abundance (%)")#,group_order=c("SB","WM","MM","DM","FF")
+
+
+#To output
+#The raw output of what functions the different OTUs have
+faprotaxOTU<-t2$res_spe_func
+#The abundance weighted percent of each function in each sample
+faprotaxSample<-t2$res_spe_func_perc
+faprotaxSamplelong<-t2$res_spe_func_perc_trans
+
+
+
+#Trying the plot diff on only the soil samples
+mt_soil <- clone(mt)
+mt_soil$sample_table <- subset(mt_soil$sample_table, SampleType == "soil")
+# trim all the data
+mt_soil$tidy_dataset()
+mt_soil
+
+mt_soil_fun <- trans_func$new(mt_soil)
+mt_soil_fun
+mt_soil_fun$cal_spe_func(prok_database = "FAPROTAX")
+mt_soil_fun$res_spe_func[1:5, 1:22]
+colSums(mt_soil_fun$res_spe_func)
+
+mt_soil_fun$cal_spe_func_perc(abundance_weighted = TRUE)
+#the result is store in mt_soil_fun$res_spe_func_perc
+mt_soil_fun$res_spe_func_perc
+
+mt_soil_fun$trans_spe_func_perc()
+#Transformed long format table is stored in t2$res_spe_func_perc_trans
+mt_soil_fun$res_spe_func_perc_trans
+mt_soil_fun$plot_spe_func_perc()
+
+#Clone the dataset (I still dont understand this)
+tmp_mt_soil <- clone(mt_soil)
+
+#Transpose res_spe_func_perc to be a data.frame like taxonomic abundance
+tmp <- as.data.frame(t(mt_soil_fun$res_spe_func_perc), check.names = FALSE)
+
+#Assign the table back to taxa_abund list for further analysis
+tmp_mt_soil$taxa_abund$func <- tmp
+
+#Select the "func" in taxa_abund list in trans_diff, results stored in res_abund, anova results stored in res_diff
+mt_soil2 <- trans_diff$new(dataset = tmp_mt_soil, method = "anova", group = "CommunityType", taxa_level = "func")
+mt_soil2$res_abund%>%filter(Taxa=="anaerobic_chemoheterotrophy")
+mt_soil2$res_diff
+mt_soil2$plot_diff_abund(use_number=1:30,add_sig = T,group_order=c("SB","WM","MM","DM","FF")) + ggplot2::ylab("Relative abundance (%)")
+
 
 
 
