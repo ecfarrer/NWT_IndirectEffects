@@ -579,6 +579,18 @@ rich16S_r4903<-estimate_richness(dat16SS5c_r4903, split = TRUE, measures = c("Ob
 colnames(rich16S_r4903)<-c("Richness16S","Chao116S","se.chao116S","Shannon16S","Simpson16S","InvSimpson16S")
 rich16S_r4903$SampleID<-rownames(rich16S_r4903)
 
+#Compare chao1 for the different rarefactions
+rich16S[300:311,]
+rich16S_r4903[290:299,]
+
+#x is rich16S_r4903, y is rich16S
+temp<-rich16S_r4903%>%
+  right_join(rich16S,by="SampleID")
+
+plot(temp$Richness16S.x,temp$Richness16S.y)
+#it's not terrible, I'm not too worried about just using the rarefaction at 2073
+
+
 
 dat17b<-dat17%>%
   full_join(richITS2)
