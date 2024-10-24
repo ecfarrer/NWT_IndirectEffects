@@ -120,6 +120,10 @@ dat<-labdat2%>%
 head(dat)
 dim(dat)
 
+#I caught and fixed one copy and paste error from the field data leaf area into the licor data leaf area. and I checked that all the NAs/differences between the fiel data leaf areas and the licor data leaf areas are accounted for. the ones that are NAs in the licor data leaf area are samples that were removed b/c they had suspicious values for Acorrectedredo or had a deschampsia filling most of the frame so suspect
+dat$LeafAreacm2redo-dat$RedoLeafAreacm2fielddata
+dat[143:147,c("PlotID","LeafAreacm2redo")]
+dat[143:147,c("PlotID","RedoLeafAreacm2fielddata")]
 
 
 
@@ -127,44 +131,85 @@ dim(dat)
 
 
 
+##### Getting Survey data together #####
 
+#think about how I want to do the subsetting for the survey. do I want to include all the experimental controls or just one per plot. As of now I will include only the a's from the control plots for all sites except the WM in Trough fow which I will use all of them
 
+#In general we only have WM from the control (and experimental plots), not from any plots outside the turf area
+#For lab/field data, we are missing licor from TC_WM_1b, missing amf from ES_DM_3
+#For fungi we are missing TC_WM_1a roots,TC_WM_1b roots, TS_FF_5 soil
+#For bacteria we are missing AS_SB_1 roots, LS_FF_3 roots, LS_SB_5 roots, TC_WM_2c roots
 
-
-
-##### Survey data #####
-
-labdat2S<-labdat2%>%
-  filter(Proj!="E")%>%
+datS<-dat%>%
+  filter(SurveyAnalysis=="Survey")%>%
   #filter(PlantID%nin%c("1b","1c","2b","2c","3b","3c"))%>% #take out samples from the same control plot, only use one
-  arrange(Site,Community)
-labdat2S
+  arrange(Site,CommunityType,Treatment,PlantID)
+#105 samples
 
-fielddatS<-fielddat%>%
-  filter(Proj!="E")%>%
-  arrange(Site,Community)
+# datS%>%
+#   filter(Treatment=="Control")
+# 
+# datS%>%
+#   group_by(Site,CommunityType)%>%
+#   tally()
+# 
+# temp<-data.frame(sample_data(dat16SS5c))%>%
+#   filter(SurveyAnalysis=="Survey")%>%
+#   arrange(Site,CommunityType,SampleType)%>%
+#   #filter(!(Rep%in%c("1b","1c","2b","2c","3b","3c")))%>%
+#   group_by(Site,CommunityType,SampleType)%>%
+#   tally()
+# as.data.frame(temp)
+
+
+datITSS5cS<-datITSS5c%>%
+  subset_samples(SurveyAnalysis=="Survey")%>%
+  filter_taxa(function(x) sum(x) > (0), prune=T)
+#207 samples, missing 3
+
+dat16SS5cS<-dat16SS5c%>%
+  subset_samples(SurveyAnalysis=="Survey")%>%
+  filter_taxa(function(x) sum(x) > (0), prune=T)
+#206 samples, missing 4
+
+
+
 
 
 ##### Getting Experiment data together #####
-labdat2E<-labdat2%>%
-  filter(Proj!="S")%>%
-  arrange(Site,Community)%>%
-  mutate(CommunityProj=factor(paste(Community,Proj,sep="_"),levels=c("WM_C","WM_E","MM_C","MM_E","DM_C","DM_E")))%>%
-  mutate(Community=factor(Community,levels=c("WM","MM","DM")))
-labdat2E
 
-fielddatE<-fielddat%>%
-  filter(Proj!="S")%>%
-  arrange(Site,Community)%>%
-  mutate(CommunityProj=factor(paste(Community,Proj,sep="_"),levels=c("WM_C","WM_E","MM_C","MM_E","DM_C","DM_E")))%>%
-  mutate(Community=factor(Community,levels=c("WM","MM","DM")))
+#Lab/field, missing licor from TC_WM_1b
+#Fungi,
+#Bacteria,
 
-dat<-labdat2E%>%
-  full_join(fielddatE)%>%
-  full_join(licordat2E)%>%
-  full_join(amf2E)
-head(dat)
-dim(dat)
 
-#note eventually I want to reload these dataframes and have the site names listed out "Trough" and have Proj change to Treatment
+datE<-dat%>%
+  filter(ExperimentAnalysis=="Experiment")%>%
+  arrange(Site,CommunityType,Treatment,PlantID)
+  # mutate(CommunityProj=factor(paste(Community,Proj,sep="_"),levels=c("WM_C","WM_E","MM_C","MM_E","DM_C","DM_E")))%>%
+  # mutate(Community=factor(Community,levels=c("WM","MM","DM")))
+dim(datE)
+#72 sample (=9*2*4)
+
+
+datITSS5cE<-datITSS5c%>%
+  subset_samples(ExperimentAnalysis=="Experiment")%>%
+  filter_taxa(function(x) sum(x) > (0), prune=T)
+#140 samples, missing 4, EE_DM_1c soil, TC_WM_1a roots,TC_WM_1b roots, TE_WM_3c roots
+
+
+dat16SS5cE<-dat16SS5c%>%
+  subset_samples(ExperimentAnalysis=="Experiment")%>%
+  filter_taxa(function(x) sum(x) > (0), prune=T)
+#140 samples, missing 4, AC_MM_1c roots, AE_MM_3b soil, AC_MM_1b soil, TC_WM_2c roots
+
+
+# temp<-data.frame(sample_data(dat16SS5cE))%>%
+#   group_by(Site,CommunityType,SampleType)%>%
+#   tally()
+# as.data.frame(temp)
+
+
+
+
 

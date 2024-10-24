@@ -403,7 +403,7 @@ datITSS4 <-datITSS3 %>%
 
 
 ####### Rarefy to 4476 ######
-#This takes out samples: r138, r137, r139 (this was taken out before decontam), s23,  s48
+#This takes out samples: r138, r137, r139 (this was taken out before decontam), s23, s48
 datITSS4
 datITSS5<-datITSS4%>%
   rarefy_even_depth(sample.size=min(sample_sums(datITSS4)),rngseed=10,replace=F)%>%
