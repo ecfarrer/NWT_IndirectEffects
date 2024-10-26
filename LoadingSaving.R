@@ -23,11 +23,13 @@ options(contrasts=c("contr.helmert","contr.poly"));options("contrasts")
 #This is for my first runthrough only with roots for the annual report
 load("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspace1analysis.RData")
 
-#This is updated for fungal bioinformatics
+#This is my current analysis workspace
+save.image("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspaceanalysis.RData")
+
+
+#This is updated for fungal and bacterial bioinformatics
 save.image(file = "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspacecleandata.Rdata")
  
-load("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspace2analysis.RData")  # 
-
 
 
 #Bioinformatics on fungi 

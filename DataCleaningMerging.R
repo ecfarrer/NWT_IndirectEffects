@@ -120,13 +120,27 @@ dat<-labdat2%>%
 head(dat)
 dim(dat)
 
-#I caught and fixed one copy and paste error from the field data leaf area into the licor data leaf area. and I checked that all the NAs/differences between the fiel data leaf areas and the licor data leaf areas are accounted for. the ones that are NAs in the licor data leaf area are samples that were removed b/c they had suspicious values for Acorrectedredo or had a deschampsia filling most of the frame so suspect
+#I caught and fixed one copy and paste error from the field data leaf area into the licor data leaf area. and I checked that all the NAs/differences between the field data leaf areas and the licor data leaf areas are accounted for. the ones that are NAs in the licor data leaf area are samples that were removed b/c they had suspicious values for Acorrectedredo or had a deschampsia filling most of the frame so suspect
 dat$LeafAreacm2redo-dat$RedoLeafAreacm2fielddata
 dat[143:147,c("PlotID","LeafAreacm2redo")]
 dat[143:147,c("PlotID","RedoLeafAreacm2fielddata")]
 
 
 
+##### Adding some columns to microbe data sets #####
+sample_data(datITSS5c)$SiteCommunityType<-paste(sample_data(datITSS5c)$Site,sample_data(datITSS5c)$CommunityType,sep="")
+sample_data(datITSS5c)$SiteCommunityType<-factor(sample_data(datITSS5c)$SiteCommunityType,levels=c("AudubonSB","AudubonMM","AudubonDM","AudubonFF","EastKnollSB","EastKnollMM","EastKnollDM","EastKnollFF","LeftySB","LeftyMM","LeftyDM","LeftyFF","TroughSB","TroughWM","TroughMM","TroughDM","TroughFF"))
+
+sample_data(datITSS5c)$SiteTreatment<-paste(sample_data(datITSS5c)$Site,sample_data(datITSS5c)$Treatment,sep="")
+sample_data(datITSS5c)$SiteTreatment<-factor(sample_data(datITSS5c)$SiteTreatment,levels=c("AudubonControl","AudubonExperimental","EastKnollControl","EastKnollExperimental","LeftyControl","LeftyExperimental","TroughControl","TroughExperimental","Audubon","EastKnoll","Lefty","Trough"))
+
+sample_data(dat16SS5c)$SiteCommunityType<-paste(sample_data(dat16SS5c)$Site,sample_data(dat16SS5c)$CommunityType,sep="")
+sample_data(dat16SS5c)$SiteCommunityType<-factor(sample_data(dat16SS5c)$SiteCommunityType,levels=c("AudubonSB","AudubonMM","AudubonDM","AudubonFF","EastKnollSB","EastKnollMM","EastKnollDM","EastKnollFF","LeftySB","LeftyMM","LeftyDM","LeftyFF","TroughSB","TroughWM","TroughMM","TroughDM","TroughFF"))
+
+sample_data(dat16SS5c)$SiteTreatment<-paste(sample_data(dat16SS5c)$Site,sample_data(dat16SS5c)$Treatment,sep="")
+sample_data(dat16SS5c)$SiteTreatment<-factor(sample_data(dat16SS5c)$SiteTreatment,levels=c("AudubonControl","AudubonExperimental","EastKnollControl","EastKnollExperimental","LeftyControl","LeftyExperimental","TroughControl","TroughExperimental","Audubon","EastKnoll","Lefty","Trough"))
+
+sample_data(dat16SS5c)$CommunityType<-factor(sample_data(dat16SS5c)$CommunityType,levels=c("SB","WM","MM","DM","FF"))
 
 
 
@@ -210,6 +224,19 @@ dat16SS5cE<-dat16SS5c%>%
 # as.data.frame(temp)
 
 
+
+
+##### Get trough survey and experiment data together #####
+
+datITSS5cTrough<-datITSS5c%>%
+  subset_samples(Site=="Trough")%>%
+  subset_samples(CommunityType%in%c("WM","MM"))%>%
+  filter_taxa(function(x) sum(x) > (0), prune=T)
+
+dat16SS5cTrough<-dat16SS5c%>%
+  subset_samples(Site=="Trough")%>%
+  subset_samples(CommunityType%in%c("WM","MM"))%>%
+  filter_taxa(function(x) sum(x) > (0), prune=T)
 
 
 
