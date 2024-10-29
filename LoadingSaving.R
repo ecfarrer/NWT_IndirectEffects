@@ -14,7 +14,7 @@ library(MASS)
 library(multcomp)
 library(Hmisc)
 #library(deming)#for deming regression with x and y error
-library(emmeans)#for least squares means, new
+library(emmeans)#for least squares means
 #library(ggforce)#for some ellipses on ordinations
 library(lavaan)
 
@@ -25,6 +25,8 @@ load("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEff
 
 #This is my current analysis workspace
 save.image("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspaceanalysis.RData")
+save.image("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspaceanalysis2.RData")
+load("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/workspaceanalysis2.RData")
 
 
 #This is updated for fungal and bacterial bioinformatics

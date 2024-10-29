@@ -5,12 +5,12 @@
 labdat<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Data/Niwot_IndirectEffects_2021_LabData.csv",stringsAsFactors = T)
 labdat2<-labdat%>%
   filter(SoilMoisturePercent>0)%>%
-  filter(!(PlotID=="ES-FF2"&Replicate==1))%>%
-  filter(!(PlotID=="AS-DM3"&Replicate==1))%>%
-  filter(!(PlotID=="LE-DM1c"&Replicate==1))%>%
-  filter(!(PlotID=="AE-MM1a"&Replicate==1))%>%
-  filter(!(PlotID=="TC-WM1a"&Replicate==1))%>%
-  filter(!(PlotID=="TE-WM3c"&Replicate==1))%>%
+  filter(!(PlotID=="ES_FF_2"&Replicate==1))%>%
+  filter(!(PlotID=="AS_DM_3"&Replicate==1))%>%
+  filter(!(PlotID=="LE_DM_1c"&Replicate==1))%>%
+  filter(!(PlotID=="AE_MM_1a"&Replicate==1))%>%
+  filter(!(PlotID=="TC_WM_1a"&Replicate==1))%>%
+  filter(!(PlotID=="TE_WM_3c"&Replicate==1))%>%
   dplyr::select(PlotID:Replicate,SoilMoisturePercent,Biomassg)%>%
   group_by(PlotID,Site,PlotType,Treatment,SurveyAnalysis,ExperimentAnalysis,CommunityType,Chamber,Plot,PlantID)%>%
   summarise(across(SoilMoisturePercent:Biomassg,~mean(.x,na.rm=T)))%>%
@@ -117,6 +117,9 @@ dat<-labdat2%>%
   full_join(fielddat)%>%
   full_join(licordat2)%>%
   full_join(amf2)
+dat$Site<-factor(dat$Site,levels=c("Trough","Audubon","Lefty","EastKnoll"))
+dat$SiteCommunityType<-paste(dat$Site,dat$CommunityType,sep="")
+dat$SiteCommunityType<-factor(dat$SiteCommunityType,levels=c("TroughSB","TroughWM","TroughMM","TroughDM","TroughFF","AudubonSB","AudubonMM","AudubonDM","AudubonFF","LeftySB","LeftyMM","LeftyDM","LeftyFF","EastKnollSB","EastKnollMM","EastKnollDM","EastKnollFF"))
 head(dat)
 dim(dat)
 
@@ -199,8 +202,8 @@ dat16SS5cS<-dat16SS5c%>%
 
 datE<-dat%>%
   filter(ExperimentAnalysis=="Experiment")%>%
-  arrange(Site,CommunityType,Treatment,PlantID)
-  # mutate(CommunityProj=factor(paste(Community,Proj,sep="_"),levels=c("WM_C","WM_E","MM_C","MM_E","DM_C","DM_E")))%>%
+  arrange(Site,CommunityType,Treatment,PlantID)%>%
+  mutate(CommunityTreatment=factor(paste(CommunityType,Treatment,sep="_"),levels=c("WM_Control","WM_Experimental","MM_Control","MM_Experiemental","DM_Control","DM_Experimental")))
   # mutate(Community=factor(Community,levels=c("WM","MM","DM")))
 dim(datE)
 #72 sample (=9*2*4)
@@ -232,11 +235,66 @@ datITSS5cTrough<-datITSS5c%>%
   subset_samples(Site=="Trough")%>%
   subset_samples(CommunityType%in%c("WM","MM"))%>%
   filter_taxa(function(x) sum(x) > (0), prune=T)
+sample_data(datITSS5cTrough)$Group<-sample_data(datITSS5cTrough)$Treatment
+ind<-sample_data(datITSS5cTrough)$Group==""
+sample_data(datITSS5cTrough)$Group[ind]<-"Survey"
 
 dat16SS5cTrough<-dat16SS5c%>%
   subset_samples(Site=="Trough")%>%
   subset_samples(CommunityType%in%c("WM","MM"))%>%
   filter_taxa(function(x) sum(x) > (0), prune=T)
+sample_data(dat16SS5cTrough)$Group<-sample_data(dat16SS5cTrough)$Treatment
+ind<-sample_data(dat16SS5cTrough)$Group==""
+sample_data(dat16SS5cTrough)$Group[ind]<-"Survey"
 
+#Audubon, experimental are all moist meadow, also have 3 more MM in survey i should delete
+datITSS5cAudubon<-datITSS5c%>%
+  subset_samples(Site=="Audubon")%>%
+  subset_samples(CommunityType%in%c("MM","DM"))%>%
+  subset_samples(!(CommunityType%in%c("MM")&PlotType=="Survey"))%>%
+  filter_taxa(function(x) sum(x) > (0), prune=T)
+sample_data(datITSS5cAudubon)$Group<-sample_data(datITSS5cAudubon)$Treatment
+ind<-sample_data(datITSS5cAudubon)$Group==""
+sample_data(datITSS5cAudubon)$Group[ind]<-"SurveyDM"
 
+dat16SS5cAudubon<-dat16SS5c%>%
+  subset_samples(Site=="Audubon")%>%
+  subset_samples(CommunityType%in%c("MM","DM"))%>%
+  subset_samples(!(CommunityType%in%c("MM")&PlotType=="Survey"))%>%
+  filter_taxa(function(x) sum(x) > (0), prune=T)
+sample_data(dat16SS5cAudubon)$Group<-sample_data(dat16SS5cAudubon)$Treatment
+ind<-sample_data(dat16SS5cAudubon)$Group==""
+sample_data(dat16SS5cAudubon)$Group[ind]<-"SurveyDM"
+
+#Lefty, experimental are all DM, also have 3 more DM in survey i should delete
+datITSS5cLefty<-datITSS5c%>%
+  subset_samples(Site=="Lefty")%>%
+  subset_samples(CommunityType%in%c("DM","FF"))%>%
+  subset_samples(!(CommunityType%in%c("DM")&PlotType=="Survey"))%>%
+  filter_taxa(function(x) sum(x) > (0), prune=T)
+#sample_data(datITSS5cAudubon)$Group<-sample_data(datITSS5cAudubon)$Treatment
+#ind<-sample_data(datITSS5cAudubon)$Group==""
+#sample_data(datITSS5cAudubon)$Group[ind]<-"SurveyDM"
+
+dat16SS5cLefty<-dat16SS5c%>%
+  subset_samples(Site=="Lefty")%>%
+  subset_samples(CommunityType%in%c("DM","FF"))%>%
+  subset_samples(!(CommunityType%in%c("DM")&PlotType=="Survey"))%>%
+  filter_taxa(function(x) sum(x) > (0), prune=T)
+# sample_data(dat16SS5cAudubon)$Group<-sample_data(dat16SS5cAudubon)$Treatment
+# ind<-sample_data(dat16SS5cAudubon)$Group==""
+# sample_data(dat16SS5cAudubon)$Group[ind]<-"SurveyDM"
+
+#EastKnoll, experimental are all DM, also have 3 more DM in survey i should delete
+datITSS5cEastKnoll<-datITSS5c%>%
+  subset_samples(Site=="EastKnoll")%>%
+  subset_samples(CommunityType%in%c("DM","FF"))%>%
+  subset_samples(!(CommunityType%in%c("DM")&PlotType=="Survey"))%>%
+  filter_taxa(function(x) sum(x) > (0), prune=T)
+
+dat16SS5cEastKnoll<-dat16SS5c%>%
+  subset_samples(Site=="EastKnoll")%>%
+  subset_samples(CommunityType%in%c("DM","FF"))%>%
+  subset_samples(!(CommunityType%in%c("DM")&PlotType=="Survey"))%>%
+  filter_taxa(function(x) sum(x) > (0), prune=T)
 
