@@ -204,7 +204,8 @@ datE<-dat%>%
   filter(ExperimentAnalysis=="Experiment")%>%
   arrange(Site,CommunityType,Treatment,PlantID)%>%
   mutate(CommunityTreatment=factor(paste(CommunityType,Treatment,sep="_"),levels=c("WM_Control","WM_Experimental","MM_Control","MM_Experimental","DM_Control","DM_Experimental")))%>%
-  mutate(SiteTreatment=factor(paste(Site,Treatment,sep="_"),levels=c("Trough_Control","Trough_Experimental","Audubon_Control","Audubon_Experimental","Lefty_Control","Lefty_Experimental","EastKnoll_Control","EastKnoll_Experimental")))
+  mutate(SiteTreatment=factor(paste(Site,Treatment,sep="_"),levels=c("Trough_Control","Trough_Experimental","Audubon_Control","Audubon_Experimental","Lefty_Control","Lefty_Experimental","EastKnoll_Control","EastKnoll_Experimental")))%>%
+  mutate(SitePlot=factor(paste(Site,Plot,sep="_")))
 datE$MoistureType=datE$CommunityType
 ind<-datE$MoistureType=="WM"
 datE$MoistureType[ind]<-"MM"
