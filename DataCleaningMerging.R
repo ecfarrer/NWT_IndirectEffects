@@ -203,8 +203,12 @@ dat16SS5cS<-dat16SS5c%>%
 datE<-dat%>%
   filter(ExperimentAnalysis=="Experiment")%>%
   arrange(Site,CommunityType,Treatment,PlantID)%>%
-  mutate(CommunityTreatment=factor(paste(CommunityType,Treatment,sep="_"),levels=c("WM_Control","WM_Experimental","MM_Control","MM_Experiemental","DM_Control","DM_Experimental")))
-  # mutate(Community=factor(Community,levels=c("WM","MM","DM")))
+  mutate(CommunityTreatment=factor(paste(CommunityType,Treatment,sep="_"),levels=c("WM_Control","WM_Experimental","MM_Control","MM_Experimental","DM_Control","DM_Experimental")))%>%
+  mutate(SiteTreatment=factor(paste(Site,Treatment,sep="_"),levels=c("Trough_Control","Trough_Experimental","Audubon_Control","Audubon_Experimental","Lefty_Control","Lefty_Experimental","EastKnoll_Control","EastKnoll_Experimental")))
+datE$MoistureType=datE$CommunityType
+ind<-datE$MoistureType=="WM"
+datE$MoistureType[ind]<-"MM"
+datE$MoistureTreatment<-paste(datE$MoistureType,datE$Treatment,sep="_")
 dim(datE)
 #72 sample (=9*2*4)
 
