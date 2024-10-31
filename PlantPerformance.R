@@ -1,4 +1,4 @@
-###### Plant Performance ######
+#Plant Performance Data
 
 
 #variables: soil moisture, biomass, number of leaves, leaf length, number of flowers, assimilation, transpiration, stomatal conductance (gsw)?, arbuscules, vesicles, hyphae?
@@ -18,6 +18,7 @@ terms.gls <- function(object, ...) {
   terms(model.frame(object), ...)
 }
 
+##### Abiotic #####
 
 ###### Moisture - Survey ######
 
@@ -114,7 +115,7 @@ anova(m0,type="margin")
 
 
 
-
+##### Plant Performance #####
 
 ###### Biomass ######
 
@@ -257,6 +258,7 @@ mc<-lme(FlowersperRosette ~ SiteTreatment, random=~1|SitePlot/Chamber, na.action
 summary(glht(mc, linfct = mcp(SiteTreatment=c("Trough_Experimental-Trough_Control=0","Audubon_Experimental-Audubon_Control=0","Lefty_Experimental-Lefty_Control=0","EastKnoll_Experimental-EastKnoll_Control=0"))))
 
 
+##### LICOR #####
 
 ###### Assimilation ######
 
@@ -393,6 +395,8 @@ mc<-lme(Ci ~ SiteTreatment, random=~1|SitePlot/Chamber, na.action=na.omit, data 
 summary(glht(mc, linfct = mcp(SiteTreatment=c("Trough_Experimental-Trough_Control=0","Audubon_Experimental-Audubon_Control=0","Lefty_Experimental-Lefty_Control=0","EastKnoll_Experimental-EastKnoll_Control=0"))))
 
 
+
+##### Root Staining #####
 
 ###### Arbuscules ######
 
