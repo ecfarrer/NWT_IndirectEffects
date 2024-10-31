@@ -110,6 +110,25 @@ dim(amf2)
 
 
 
+##### Undergrad root staining #####
+
+uamf<-read.csv("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Data/UndergradRootScoring.csv",stringsAsFactors=T)
+head(uamf)
+
+#This has not been cleaned, there are some notes about weak stains that I could address and delete. I just want to look at the first pass patterns
+
+#amf$CommunityType<-factor(amf$CommunityType,levels=c("SB","WM","MM","DM","FF"))
+uamf2<-uamf%>%
+  filter(PlotID!="TC_MM_2")%>% #this might really be TS_MM_2 but for now I'll just delete it
+  dplyr::select(PlotID,Rep,Negative:HyphaeP)%>%
+  group_by(PlotID)%>%
+  summarise(across(Negative:HyphaeP,~mean(.x,na.rm=T)))%>%
+  arrange(PlotID)%>%
+  left_join(labdat2)
+uamf2$SiteTreatment<-paste(uamf2$Site,uamf2$Treatment,sep="_")
+uamf2$SiteTreatment<-factor(uamf2$SiteTreatment,levels=c("Trough_Control","Trough_Experimental","Trough_","Audubon_Control","Audubon_Experimental","Audubon_","Lefty_Control","Lefty_Experimental","Lefty_","EastKnoll_Control","EastKnoll_Experimental","EastKnoll_"))
+uamf2$Site<-factor(uamf2$Site,levels=c("Trough","Audubon","Lefty","EastKnoll"))
+
 
 ##### Merge all datasets #####
 
