@@ -115,6 +115,285 @@ anova(m0,type="margin")
 
 
 
+
+###### Biomass ######
+
+ggplot(datE, aes(x=MoistureTreatment,y=Biomassg))+
+  geom_boxplot()
+
+m1<-datE%>%
+  group_by(Site,Treatment)%>%
+  summarise(se=std.error(Biomassg),Biomassg=mean(Biomassg))
+m1
+#m1$mcs<-c("a","b","a","a","a","a","a","a")
+
+#with facet wrap
+ggplot(datE, aes(x=Treatment, y=Biomassg, color=Treatment))+   
+  ylab("Biomass (g)")+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  geom_point(data=m1,size=1.8,aes(color=Treatment,group=Treatment))+
+  geom_point(size=.7,aes(fill=Treatment,group=Treatment),position = position_jitterdodge(jitter.width=.25),alpha=rep(.4,72))+
+  geom_errorbar(data=m1,aes(ymax=Biomassg+se,ymin=Biomassg-se),width=.3)+
+  ylim(0,2.8)+
+  facet_wrap(vars(Site),strip.position = "bottom",nrow=1)+
+#  geom_text(m1,mapping=aes(x=Treatment,y=2.7,label=mcs),color="black",size=3)+
+  scale_color_manual(values = c("#50b47b", "#ba6437")) 
+
+
+#Statistics
+#Chamber is unique to the 1 x 1 m plot, "Plot" is unique to the elevation of the site across sand treatments (1,2,3 1,2,3)
+
+m0<-lme(Biomassg ~ Treatment*CommunityType, random=~1|SitePlot/Chamber, data = datE)
+anova(m0,type="margin")
+mc<-lme(Biomassg ~ SiteTreatment, random=~1|SitePlot/Chamber, data = datE)
+summary(glht(mc, linfct = mcp(SiteTreatment=c("Trough_Experimental-Trough_Control=0","Audubon_Experimental-Audubon_Control=0","Lefty_Experimental-Lefty_Control=0","EastKnoll_Experimental-EastKnoll_Control=0"))))
+
+
+###### Leaf number ######
+
+ggplot(datE, aes(x=Treatment,y=LeafNumber))+
+  geom_boxplot()
+hist(datE$LeafNumber)
+
+datE$LeafNumber[datE$LeafNumber>20]<-NA ##i replaced the 21 with NA
+
+m1<-datE%>%
+  group_by(Site,Treatment)%>%
+  summarise(se=std.error(LeafNumber),LeafNumber=mean(LeafNumber,na.rm=T))
+m1
+#m1$mcs<-c("a","b","a","a","a","a","a","a")
+
+#with facet wrap
+ggplot(datE, aes(x=Treatment, y=LeafNumber, color=Treatment))+   
+  ylab("Leaf number")+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  geom_point(data=m1,size=1.8,aes(color=Treatment,group=Treatment))+
+  geom_point(size=.7,aes(fill=Treatment,group=Treatment),position = position_jitterdodge(jitter.width=.25),alpha=rep(.4,72))+
+  geom_errorbar(data=m1,aes(ymax=LeafNumber+se,ymin=LeafNumber-se),width=.3)+
+  #ylim(0,2.8)+
+  facet_wrap(vars(Site),strip.position = "bottom",nrow=1)+
+  #  geom_text(m1,mapping=aes(x=Treatment,y=2.7,label=mcs),color="black",size=3)+
+  scale_color_manual(values = c("#50b47b", "#ba6437")) 
+
+
+#Statistics
+#Chamber is unique to the 1 x 1 m plot, "Plot" is unique to the elevation of the site across sand treatments (1,2,3 1,2,3)
+
+m0<-lme(LeafNumber ~ Treatment*Site, random=~1|SitePlot/Chamber, na.action=na.omit, data = datE)
+anova(m0,type="margin")
+mc<-lme(LeafNumber ~ SiteTreatment, random=~1|SitePlot/Chamber, na.action=na.omit, data = datE)
+summary(glht(mc, linfct = mcp(SiteTreatment=c("Trough_Experimental-Trough_Control=0","Audubon_Experimental-Audubon_Control=0","Lefty_Experimental-Lefty_Control=0","EastKnoll_Experimental-EastKnoll_Control=0"))))
+
+
+###### Leaf length ######
+
+ggplot(datE, aes(x=Treatment,y=LeafLengthmm))+
+  geom_boxplot()
+
+m1<-datE%>%
+  group_by(Site,Treatment)%>%
+  summarise(se=std.error(LeafLengthmm),LeafLengthmm=mean(LeafLengthmm))
+m1
+#m1$mcs<-c("a","b","a","a","a","a","a","a")
+
+#with facet wrap
+ggplot(datE, aes(x=Treatment, y=LeafLengthmm, color=Treatment))+   
+  ylab("Leaf number")+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  geom_point(data=m1,size=1.8,aes(color=Treatment,group=Treatment))+
+  geom_point(size=.7,aes(fill=Treatment,group=Treatment),position = position_jitterdodge(jitter.width=.25),alpha=rep(.4,72))+
+  geom_errorbar(data=m1,aes(ymax=LeafLengthmm+se,ymin=LeafLengthmm-se),width=.3)+
+  #ylim(0,2.8)+
+  facet_wrap(vars(Site),strip.position = "bottom",nrow=1)+
+  #  geom_text(m1,mapping=aes(x=Treatment,y=2.7,label=mcs),color="black",size=3)+
+  scale_color_manual(values = c("#50b47b", "#ba6437")) 
+
+
+#Statistics
+#Chamber is unique to the 1 x 1 m plot, "Plot" is unique to the elevation of the site across sand treatments (1,2,3 1,2,3)
+
+m0<-lme(LeafLengthmm ~ Site*Treatment, random=~1|SitePlot/Chamber, na.action=na.omit, data = datE)
+anova(m0,type="margin")
+mc<-lme(LeafLengthmm ~ SiteTreatment, random=~1|SitePlot/Chamber, na.action=na.omit, data = datE)
+summary(glht(mc, linfct = mcp(SiteTreatment=c("Trough_Experimental-Trough_Control=0","Audubon_Experimental-Audubon_Control=0","Lefty_Experimental-Lefty_Control=0","EastKnoll_Experimental-EastKnoll_Control=0"))))
+
+
+
+###### FlowersperRosette ######
+
+ggplot(datE, aes(x=Treatment,y=FlowersperRosette))+
+  geom_boxplot()
+hist(datE$FlowersperRosette)
+
+m1<-datE%>%
+  group_by(Site,Treatment)%>%
+  summarise(se=std.error(FlowersperRosette),FlowersperRosette=mean(FlowersperRosette,na.rm=T))
+m1
+#m1$mcs<-c("a","b","a","a","a","a","a","a")
+
+#with facet wrap
+ggplot(datE, aes(x=Treatment, y=FlowersperRosette, color=Treatment))+   
+  ylab("Flowers per rossette")+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  geom_point(data=m1,size=1.8,aes(color=Treatment,group=Treatment))+
+  geom_point(size=.7,aes(fill=Treatment,group=Treatment),position = position_jitterdodge(jitter.width=.25),alpha=rep(.4,72))+
+  geom_errorbar(data=m1,aes(ymax=FlowersperRosette+se,ymin=FlowersperRosette-se),width=.3)+
+  #ylim(0,2.8)+
+  facet_wrap(vars(Site),strip.position = "bottom",nrow=1)+
+  #  geom_text(m1,mapping=aes(x=Treatment,y=2.7,label=mcs),color="black",size=3)+
+  scale_color_manual(values = c("#50b47b", "#ba6437")) 
+
+
+#Statistics
+#Chamber is unique to the 1 x 1 m plot, "Plot" is unique to the elevation of the site across sand treatments (1,2,3 1,2,3)
+
+m0<-lme(FlowersperRosette ~ Site*Treatment, random=~1|SitePlot/Chamber, na.action=na.omit, data = datE)
+anova(m0,type="margin")
+mc<-lme(FlowersperRosette ~ SiteTreatment, random=~1|SitePlot/Chamber, na.action=na.omit, data = datE)
+summary(glht(mc, linfct = mcp(SiteTreatment=c("Trough_Experimental-Trough_Control=0","Audubon_Experimental-Audubon_Control=0","Lefty_Experimental-Lefty_Control=0","EastKnoll_Experimental-EastKnoll_Control=0"))))
+
+
+
+###### Assimilation ######
+
+ggplot(datE, aes(x=Treatment,y=Acorrectedredo))+
+  geom_boxplot()
+
+m1<-datE%>%
+  group_by(Site,Treatment)%>%
+  summarise(se=std.error(Acorrectedredo),Acorrectedredo=mean(Acorrectedredo,na.rm=T))
+m1
+#m1$mcs<-c("a","b","a","a","a","a","a","a")
+
+#with facet wrap
+ggplot(datE, aes(x=Treatment, y=Acorrectedredo, color=Treatment))+   
+  ylab(bquote('Assimilation ('*mu*'mol' ~ CO[2]~ m^-2~s^-1*')'))+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  geom_point(data=m1,size=1.8,aes(color=Treatment,group=Treatment))+
+  geom_point(size=.7,aes(fill=Treatment,group=Treatment),position = position_jitterdodge(jitter.width=.25),alpha=rep(.4,72))+
+  geom_errorbar(data=m1,aes(ymax=Acorrectedredo+se,ymin=Acorrectedredo-se),width=.3)+
+  #ylim(0,2.8)+
+  facet_wrap(vars(Site),strip.position = "bottom",nrow=1)+
+  #  geom_text(m1,mapping=aes(x=Treatment,y=2.7,label=mcs),color="black",size=3)+
+  scale_color_manual(values = c("#50b47b", "#ba6437")) 
+
+
+#Statistics
+#Chamber is unique to the 1 x 1 m plot, "Plot" is unique to the elevation of the site across sand treatments (1,2,3 1,2,3)
+
+m0<-lme(Acorrectedredo ~ Site*Treatment, random=~1|SitePlot/Chamber, na.action=na.omit, data = datE)
+anova(m0,type="margin")
+mc<-lme(Acorrectedredo ~ SiteTreatment, random=~1|SitePlot/Chamber, na.action=na.omit, data = datE)
+summary(glht(mc, linfct = mcp(SiteTreatment=c("Trough_Experimental-Trough_Control=0","Audubon_Experimental-Audubon_Control=0","Lefty_Experimental-Lefty_Control=0","EastKnoll_Experimental-EastKnoll_Control=0"))))
+
+
+###### Transpiration ######
+
+ggplot(datE, aes(x=Treatment,y=Ecorrectedredo))+
+  geom_boxplot()
+
+m1<-datE%>%
+  group_by(Site,Treatment)%>%
+  summarise(se=std.error(Ecorrectedredo),Ecorrectedredo=mean(Ecorrectedredo,na.rm=T))
+m1
+#m1$mcs<-c("a","b","a","a","a","a","a","a")
+
+#with facet wrap
+ggplot(datE, aes(x=Treatment, y=Ecorrectedredo, color=Treatment))+   
+  ylab(bquote('Transpiration (mmol'~ m^-2~s^-1*')'))+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  geom_point(data=m1,size=1.8,aes(color=Treatment,group=Treatment))+
+  geom_point(size=.7,aes(fill=Treatment,group=Treatment),position = position_jitterdodge(jitter.width=.25),alpha=rep(.4,72))+
+  geom_errorbar(data=m1,aes(ymax=Ecorrectedredo+se,ymin=Ecorrectedredo-se),width=.3)+
+  #ylim(0,2.8)+
+  facet_wrap(vars(Site),strip.position = "bottom",nrow=1)+
+  #  geom_text(m1,mapping=aes(x=Treatment,y=2.7,label=mcs),color="black",size=3)+
+  scale_color_manual(values = c("#50b47b", "#ba6437")) 
+
+
+#Statistics
+#Chamber is unique to the 1 x 1 m plot, "Plot" is unique to the elevation of the site across sand treatments (1,2,3 1,2,3)
+
+m0<-lme(Ecorrectedredo ~ Site*Treatment, random=~1|SitePlot/Chamber, na.action=na.omit, data = datE)
+anova(m0,type="margin")
+mc<-lme(Ecorrectedredo ~ SiteTreatment, random=~1|SitePlot/Chamber, na.action=na.omit, data = datE)
+summary(glht(mc, linfct = mcp(SiteTreatment=c("Trough_Experimental-Trough_Control=0","Audubon_Experimental-Audubon_Control=0","Lefty_Experimental-Lefty_Control=0","EastKnoll_Experimental-EastKnoll_Control=0"))))
+
+
+###### Stomatal conductance ######
+
+ggplot(datE, aes(x=Treatment,y=gsw))+
+  geom_boxplot()
+
+m1<-datE%>%
+  group_by(Site,Treatment)%>%
+  summarise(se=std.error(gsw),gsw=mean(gsw,na.rm=T))
+m1
+#m1$mcs<-c("a","b","a","a","a","a","a","a")
+
+#with facet wrap
+ggplot(datE, aes(x=Treatment, y=gsw, color=Treatment))+   
+  ylab(bquote('Stomatal conductance (mol'~ m^-2~s^-1*')'))+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  geom_point(data=m1,size=1.8,aes(color=Treatment,group=Treatment))+
+  geom_point(size=.7,aes(fill=Treatment,group=Treatment),position = position_jitterdodge(jitter.width=.25),alpha=rep(.4,72))+
+  geom_errorbar(data=m1,aes(ymax=gsw+se,ymin=gsw-se),width=.3)+
+  #ylim(0,2.8)+
+  facet_wrap(vars(Site),strip.position = "bottom",nrow=1)+
+  #  geom_text(m1,mapping=aes(x=Treatment,y=2.7,label=mcs),color="black",size=3)+
+  scale_color_manual(values = c("#50b47b", "#ba6437")) 
+
+
+#Statistics
+#Chamber is unique to the 1 x 1 m plot, "Plot" is unique to the elevation of the site across sand treatments (1,2,3 1,2,3)
+
+m0<-lme(gsw ~ Site*Treatment, random=~1|SitePlot/Chamber, na.action=na.omit, data = datE)
+anova(m0,type="margin")
+mc<-lme(gsw ~ SiteTreatment, random=~1|SitePlot/Chamber, na.action=na.omit, data = datE)
+summary(glht(mc, linfct = mcp(SiteTreatment=c("Trough_Experimental-Trough_Control=0","Audubon_Experimental-Audubon_Control=0","Lefty_Experimental-Lefty_Control=0","EastKnoll_Experimental-EastKnoll_Control=0"))))
+
+
+
+###### gtc (total conductance to CO2), gtw (total conductance to water vapor), Ci (intracellular CO2) ######
+
+#The conductances are all pretty much the same exact pattern as gsw. Ci is interesting,there is a site effect with trough high and audubon low. a nonsig positive effect of treatment at Audubon
+m1<-datE%>%
+  group_by(Site,Treatment)%>%
+  summarise(se=std.error(Ci),Ci=mean(Ci,na.rm=T))
+m1
+#m1$mcs<-c("a","b","a","a","a","a","a","a")
+
+#with facet wrap
+ggplot(datE, aes(x=Treatment, y=Ci, color=Treatment))+   
+  ylab(bquote('Stomatal conductance (mol'~ m^-2~s^-1*')'))+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  geom_point(data=m1,size=1.8,aes(color=Treatment,group=Treatment))+
+  geom_point(size=.7,aes(fill=Treatment,group=Treatment),position = position_jitterdodge(jitter.width=.25),alpha=rep(.4,72))+
+  geom_errorbar(data=m1,aes(ymax=Ci+se,ymin=Ci-se),width=.3)+
+  #ylim(0,2.8)+
+  facet_wrap(vars(Site),strip.position = "bottom",nrow=1)+
+  #  geom_text(m1,mapping=aes(x=Treatment,y=2.7,label=mcs),color="black",size=3)+
+  scale_color_manual(values = c("#50b47b", "#ba6437")) 
+
+
+#Statistics
+#Chamber is unique to the 1 x 1 m plot, "Plot" is unique to the elevation of the site across sand treatments (1,2,3 1,2,3)
+
+m0<-lme(Ci ~ Site*Treatment, random=~1|SitePlot/Chamber, na.action=na.omit, data = datE)
+anova(m0,type="margin")
+mc<-lme(Ci ~ SiteTreatment, random=~1|SitePlot/Chamber, na.action=na.omit, data = datE)
+summary(glht(mc, linfct = mcp(SiteTreatment=c("Trough_Experimental-Trough_Control=0","Audubon_Experimental-Audubon_Control=0","Lefty_Experimental-Lefty_Control=0","EastKnoll_Experimental-EastKnoll_Control=0"))))
+
+
+
 ###### Arbuscules ######
 
 ggplot(datE, aes(x=MoistureTreatment,y=ArbusculesP))+

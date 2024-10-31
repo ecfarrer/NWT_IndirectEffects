@@ -38,6 +38,7 @@ head(licordat)
 licordat2<-licordat%>%
   dplyr::select(PlotID,CommunityType,LeafAreacm2:gtc)%>%  
   mutate(Ecorrected=Ecorrected*1000)%>%
+  mutate(Ecorrectedredo=Ecorrectedredo*1000)%>%
   filter(!is.na(LeafAreacm2redo))%>% #if you want to look at stomatal conductance you need to do this, because there are weird negative numbers here
   filter(Acorrectedredo<50)%>% #Acorrected<40
   filter(PlotID!="AS_FF_1")
