@@ -136,7 +136,9 @@ uamf2$Site<-factor(uamf2$Site,levels=c("Trough","Audubon","Lefty","EastKnoll"))
 dat<-labdat2%>%
   full_join(fielddat)%>%
   full_join(licordat2)%>%
-  full_join(amf2)
+  full_join(amf2)%>%
+  full_join(richITS2)%>%
+  full_join(rich16S2)
 dat$Site<-factor(dat$Site,levels=c("Trough","Audubon","Lefty","EastKnoll"))
 dat$SiteCommunityType<-paste(dat$Site,dat$CommunityType,sep="")
 dat$SiteCommunityType<-factor(dat$SiteCommunityType,levels=c("TroughSB","TroughWM","TroughMM","TroughDM","TroughFF","AudubonSB","AudubonMM","AudubonDM","AudubonFF","LeftySB","LeftyMM","LeftyDM","LeftyFF","EastKnollSB","EastKnollMM","EastKnollDM","EastKnollFF"))
@@ -181,6 +183,7 @@ datS<-dat%>%
   filter(SurveyAnalysis=="Survey")%>%
   #filter(PlantID%nin%c("1b","1c","2b","2c","3b","3c"))%>% #take out samples from the same control plot, only use one
   arrange(Site,CommunityType,Treatment,PlantID)
+  
 #105 samples
 
 # datS%>%
@@ -203,11 +206,16 @@ datITSS5cS<-datITSS5c%>%
   subset_samples(SurveyAnalysis=="Survey")%>%
   filter_taxa(function(x) sum(x) > (0), prune=T)
 #207 samples, missing 3
+sample_data(datITSS5cS)$SiteCommunityType<-factor(sample_data(datITSS5cS)$SiteCommunityType,levels=c("TroughSB","TroughWM","TroughMM","TroughDM","TroughFF","AudubonSB","AudubonMM","AudubonDM","AudubonFF","LeftySB","LeftyMM","LeftyDM","LeftyFF","EastKnollSB","EastKnollMM","EastKnollDM","EastKnollFF"))
+sample_data(datITSS5cS)$Site<-factor(sample_data(datITSS5cS)$Site,levels=c("Trough","Audubon","Lefty","EastKnoll"))
+
 
 dat16SS5cS<-dat16SS5c%>%
   subset_samples(SurveyAnalysis=="Survey")%>%
   filter_taxa(function(x) sum(x) > (0), prune=T)
 #206 samples, missing 4
+sample_data(dat16SS5cS)$SiteCommunityType<-factor(sample_data(dat16SS5cS)$SiteCommunityType,levels=c("TroughSB","TroughWM","TroughMM","TroughDM","TroughFF","AudubonSB","AudubonMM","AudubonDM","AudubonFF","LeftySB","LeftyMM","LeftyDM","LeftyFF","EastKnollSB","EastKnollMM","EastKnollDM","EastKnollFF"))
+sample_data(dat16SS5cS)$Site<-factor(sample_data(dat16SS5cS)$Site,levels=c("Trough","Audubon","Lefty","EastKnoll"))
 
 
 
@@ -229,7 +237,7 @@ datE<-dat%>%
 datE$MoistureType=datE$CommunityType
 ind<-datE$MoistureType=="WM"
 datE$MoistureType[ind]<-"MM"
-datE$MoistureTreatment<-paste(datE$MoistureType,datE$Treatment,sep="_")
+datE$MoistureTreatment<-factor(paste(datE$MoistureType,datE$Treatment,sep="_"))
 dim(datE)
 #72 sample (=9*2*4)
 

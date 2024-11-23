@@ -231,7 +231,7 @@ hist(trackroots8575[,5]-trackroots7570[,5],breaks=65)
 sort(trackroots4447[,5]-trackroots7570[,5])
 
 
-###### MERGE 2 sets ######
+##### MERGE 2 sets #####
 seqtab.all<-mergeSequenceTables(seqtab.roots,seqtab.soil)
 
 #remove chimeras, start 11:30, end 11:31
@@ -260,7 +260,7 @@ plot(table(nchar(getSequences(seqtab.nochim))))
 
 
 
-###### Assign taxonomy ######
+##### Assign taxonomy #####
 
 # to get the fasta file gohere:https://unite.ut.ee/repository.php and be sure to do "general release fasta" not qiime. This is 4/4/24 releae, the same one I used for the mangrove project. Note that the zip files is named slightly differently than the actual fasta when you unzip it (_s_ vs _dyanmic_s_)
 #unite.ref <- "/Users/farrer/Dropbox/EmilyComputerBackup/Documents/LAMarsh/Survey/Stats/Gradient/QIIME2/sh_general_release_dynamic_s_04.02.2020.fasta" #
@@ -274,7 +274,7 @@ taxaonly<-taxa$tax
 write.csv(taxa,"/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Stats/QIIME2/taxa.csv")
 
 
-###### Create tax table for Phyloseq ######
+##### Create tax table for Phyloseq #####
 
 sequences<-as.data.frame(rownames(taxaonly))
 rownames(sequences)<-paste0("OTU",1:nrow(sequences))
@@ -296,7 +296,7 @@ phy.tax
 
 
 
-###### Create sample data table ######
+##### Create sample data table #####
 sam<-as.data.frame(rownames(seqtab.nochim))
 names(sam)<-"SampleNumber"
 
@@ -314,7 +314,7 @@ phy.sam<-sample_data(sam3)
 rownames(phy.sam)<-sam3$SampleNumber
 
 
-###### Create official ASV Table ######
+##### Create official ASV Table #####
 OTU.Table<-as.data.frame(seqtab.nochim)
 colnames(OTU.Table)<-sequences$OTUID
 #temp<-1:dim(OTU.Table)[2] #16535 OTUs
@@ -445,25 +445,23 @@ datITSS5cotu<-cbind(sample_data(datITSS5c),otu_table(datITSS5c))
 
 
 
-#Richness
+##### Richness #####
 
 richITS<-estimate_richness(datITSS5c, split = TRUE, measures = c("Observed", "Shannon","Chao1","Simpson","InvSimpson"))
 colnames(richITS)<-c("RichnessITS","Chao1ITS","se.chao1ITS","ShannonITS","SimpsonITS","InvSimpsonITS")
-richITS$SampleID<-rownames(richITS)
+richITS$SampleNumber<-rownames(richITS)
 #richITS2<-separate(richITS,SampleID,c(NA,"Plot"),"s")
 #richITS2$Plot<-as.numeric(richITS2$Plot)
-#richITS2<-richITS%>%
-#  left_join(data.frame(sample_data(datITS2rcsoil)))
-#sample_data(datITSS5c)[,]
-
-dat17b<-dat17%>%
-  full_join(richITS2)
-dat17<-dat17b
+richITS2<-richITS%>%
+  left_join(data.frame(sample_data(datITSS5c)))%>%
+  dplyr::select(RichnessITS:PlotID,SampleType)%>%
+  dplyr::select(-SampleNumber)%>%
+  pivot_wider(names_from = SampleType,values_from = RichnessITS:InvSimpsonITS)
 
 
 
 
-###### FUNguild ######
+##### FUNguild #####
 #https://github.com/UMNFuN/FUNGuild
 #https://github.com/brendanf/FUNGuildR
 devtools::install_github("brendanf/FUNGuildR")
@@ -472,15 +470,15 @@ library(FUNGuildR)
 #The weird thing about FUNGuildR is that for some taxa, like when I have Fusarium equiseti it matches to Nectriaceae rather than Fusarium in the database. When I used the FUNGUILD in the terminal, it worked better and matched to the lowest taxonomic level. 
 
 #Trying with FUNguildR
-# funguild<-data.frame(tax_table(datITSS5c))
-# funguild2<-funguild%>%
-#   unite("Kingdom_Species",sep=";",remove=T)
-# colnames(funguild2)<-"Taxonomy"
-# funguild2$OTUID<-rownames(funguild2)
-# funguild3<-data.frame(OTUID=funguild2$OTUID,Taxonomy=funguild2$Taxonomy)
-# head(funguild3)
-# funguild4<-funguild_assign(funguild3)
-# View(funguild4)
+funguildr<-data.frame(tax_table(datITSS5c))
+funguildr2<-funguildr%>%
+  unite("Kingdom_Species",sep=";",remove=T)
+colnames(funguildr2)<-"Taxonomy"
+funguildr2$OTUID<-rownames(funguildr2)
+funguildr3<-data.frame(OTUID=funguildr2$OTUID,Taxonomy=funguildr2$Taxonomy)
+head(funguildr3)
+funguildr4<-funguild_assign(funguildr3)
+View(funguildr4)
 
 #I don't need this but I'm curious if it differs from the online one here: http://www.stbates.org/funguild_db.php   it doesn't seem to differ...
 # fung <- get_funguild_db()
@@ -516,23 +514,23 @@ funguild2<-funguild%>%
 funguild2[1:5,320:325]
 funguild2[1:5,1:5]
 
-#comparing the two, often the results for guild or trophic mode aren't different, but sometimes the FUNguildR result is actually more specific/narrowed down which is weird, but I guess the database does not automatically have the family have all the charactertics of all genera. so if not a lot is know just about a family you might get only one trophic mode, whereas for a genus you get two b/c there are more studies at the genus level. this is odd behavior but I think doing it to genus is better
+#comparing the two, often the results for guild or trophic mode aren't different, but sometimes the FUNguildR result is actually more specific/narrowed down which is weird, but I guess the database does not automatically have the family have all the characteristics of all genera. so if not a lot is know just about a family you might get only one trophic mode, whereas for a genus you get two b/c there are more studies at the genus level. this is odd behavior but I think doing it to genus is better
 # cbind(funguild2$Taxon,funguild4$taxon)
 # i<-258
 # funguild2$taxonomy[i]
-# funguild4$Taxonomy[i]
+# funguildr4$Taxonomy[i]
 # funguild2$Taxon[i]
-# funguild4$taxon[i]
+# funguildr4$taxon[i]
 # funguild2$Guild[i] #terminal
-# funguild4$guild[i] #FUNguildR
+# funguildr4$guild[i] #FUNguildR
 # funguild2$Trophic.Mode[i] #terminal
-# funguild4$trophicMode[i] #FUNguildR
+# funguildr4$trophicMode[i] #FUNguildR
 # funguild2[i,]
-# funguild4[i,]
+# funguildr4[i,]
 
 
 
-
+###### Using terminal ######
 #rarefied to 4476
 colSums(funguild2[,2:5])
 funguild2[c("Trophic.Mode","Confidence.Ranking")]
@@ -544,9 +542,10 @@ funguild2%>%filter(Trophic.Mode==("Symbiotroph"))
 #funguild_query doesn't work on the terminal output b/c the column names are slightly different from the FUNguildR output
 #funguild_query("*Saprotroph*", "Trophic.Mode", db = funguild2)
 
+#For symbiotroph, pathotroph, saptrotroph
 funguild3<-funguild2%>%
   filter(Trophic.Mode%in%c("Symbiotroph","Pathotroph","Saprotroph"))%>%
-  #filter(Confidence.Ranking%in%c("Probable","Highly Probable"))%>%
+  filter(Confidence.Ranking%in%c("Probable","Highly Probable"))%>%
   arrange(Trophic.Mode)%>%
   dplyr::select(r1:s99,Trophic.Mode)%>%
   group_by(Trophic.Mode)%>%
@@ -563,11 +562,112 @@ funguild6[,1:3]<-funguild6[,1:3]/4476*100
 
 temp<-sample_data(datITSS5c)
 cbind(temp$SampleNumber,funguild5$SampleNumber)
-temp[,18:20]<-funguild6[,1:3]
+temp[,20:22]<-funguild6[,1:3]
 temp<-data.frame(temp)
+funguild_term<-temp%>%
+  dplyr::select(PlotID,SampleType,Pathotroph,Saprotroph,Symbiotroph)%>%
+  pivot_wider(names_from = SampleType,values_from = Pathotroph:Symbiotroph)%>%
+  rename_with(~paste0(.,"_term"), 2:7)
+data.frame(funguild_term)
+
+
+#For "Plant Pathogen" or "Endophyte" or "Arbuscular Mycorrhizal"
+#this is not done, i got stalled b/c "Endophyte" is usually "|Endophye|" and I can't for the life of me figure out what the || mean when they are around some of the terms. all the guild tmers seem to sometimes have || around them and sometimes not
+funguild7<-funguild%>%
+  filter(Guild%in%c("Plant Pathogen","Endophyte","Arbuscular Mycorrhizal"))%>%
+  arrange(Guild)%>%
+  dplyr::select(r1:s99,Guild)%>%
+  group_by(Guild)%>%
+  summarise_all(list(sum=sum))
+funguild8<-data.frame(funguild7)
+row.names(funguild8)<-funguild8$Guild;funguild8$Guild<-NULL
+funguild9<-data.frame(t(funguild8))
+head(funguild9)
+funguild4$Plottemp<-row.names(funguild4)
+funguild5<-funguild4%>%
+  separate(Plottemp,into=c("Plot",NA))
+funguild5$Plot<-as.numeric(sub("s","",funguild5$Plot))
+funguild5[,1:3]<-funguild5[,1:3]/5984*100
+
+
+
+
+
+###### Using FUNguildR ######
+#rarefied to 4476
+otutabtemp<-data.frame(t(otu_table(datITSS5c)))
+otutabtemp[1:5,1:5]
+otutabtemp$OTUID<-rownames(otutabtemp)
+colSums(funguildr4[,2:5])
+funguildr5<-funguildr4%>%
+  full_join(otutabtemp)
+funguildr5[1:5,1:30]
+
+funguildr5[c("trophicMode","confidenceRanking")]
+funguildr5[1:5,315:325]
+
+funguildr5%>%filter(trophicMode==("Pathotroph"))
+funguildr5%>%filter(trophicMode==("Symbiotroph"))
+
+#funguild_query("*Saprotroph*", "Trophic.Mode", db = funguildr5)
+
+funguildr6<-funguildr5%>%
+  filter(trophicMode%in%c("Symbiotroph","Pathotroph","Saprotroph"))%>%
+  filter(confidenceRanking%in%c("Probable","Highly Probable"))%>%
+  arrange(trophicMode)%>%
+  dplyr::select(r1:s99,trophicMode)%>%
+  group_by(trophicMode)%>%
+  summarise_all(list(sum=sum))
+funguildr7<-data.frame(funguildr6)
+row.names(funguildr7)<-funguildr6$trophicMode;funguildr7$trophicMode<-NULL
+funguildr8<-data.frame(t(funguildr7))
+head(funguildr8)
+funguildr8$SampleNumbertemp<-row.names(funguildr8)
+funguildr9<-funguildr8%>%
+  separate(SampleNumbertemp,into=c("SampleNumber",NA))
+#funguild6$SampleNumber<-as.numeric(sub("X","",funguild6$SampleNumber))
+funguildr9[,1:3]<-funguildr9[,1:3]/4476*100
+
+temp<-sample_data(datITSS5c)
+cbind(temp$SampleNumber,funguildr9$SampleNumber)
+temp[,20:22]<-funguildr9[,1:3]
+temp<-data.frame(temp)
+funguild_R<-temp%>%
+  dplyr::select(PlotID,SampleType,Pathotroph,Saprotroph,Symbiotroph)%>%
+  pivot_wider(names_from = SampleType,values_from = Pathotroph:Symbiotroph)%>%
+  rename_with(~paste0(.,"_term"), 2:7)
+data.frame(funguild_term)
+
+#For plant pathogen, endophyte, Arbuscular mycorrhizae
+#this is not done see note above. I am switching to microeco and FungalTraits
+funguild7<-funguildr4%>%
+  filter(Guild%in%c("Plant Pathogen","Endophyte","Arbuscular Mycorrhizal"))%>%
+  arrange(Guild)%>%
+  dplyr::select(r1:s99,Guild)%>%
+  group_by(Guild)%>%
+  summarise_all(list(sum=sum))
+funguild8<-data.frame(funguild7)
+row.names(funguild8)<-funguild8$Guild;funguild8$Guild<-NULL
+funguild9<-data.frame(t(funguild8))
+head(funguild9)
+funguild4$Plottemp<-row.names(funguild4)
+funguild5<-funguild4%>%
+  separate(Plottemp,into=c("Plot",NA))
+funguild5$Plot<-as.numeric(sub("s","",funguild5$Plot))
+funguild5[,1:3]<-funguild5[,1:3]/5984*100
+
+
+
 
 #Make a graph for annual report
-#pathogens
+
+#for stats
+temp2<-temp%>%
+  filter(PlotType!="Survey")%>%
+  filter(SampleType=="soil")
+temp2$SiteTreatment<-factor(temp2$SiteTreatment,levels=c("AudubonControl","AudubonExperimental","EastKnollControl","EastKnollExperimental","LeftyControl","LeftyExperimental","TroughControl","TroughExperimental"))
+
+#Pathogens
 m1<-temp%>%
   filter(PlotType!="Survey")%>%
   group_by(SampleType,CommunityType,Treatment)%>%
@@ -576,18 +676,28 @@ m1
 m1$CommunityType<-factor(m1$CommunityType,levels=c("WM","MM","DM"))
 #m1$CommunityType<-recode_factor(m1$CommunityType,"C"="Control","E"="Treatment")
 
-pdf("Figs/PathogensExperiment.pdf",width=3.2,height=2.2)
+#pdf("Figs/PathogensExperiment.pdf",width=3.2,height=2.2)
 ggplot(data=m1, aes(x=Treatment, y=mean,color=SampleType))+   
   geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2,size=.5)+
   geom_point(size=1.8,show.legend = FALSE)+#, aes(group=Seed.Origin, fill=Seed.Origin, shape=Seed.Origin, color = Seed.Origin)
   ylab("Pathogens %")+
 #  ylim(5,60)+
   theme_classic()+
-  theme(line=element_line(size=.3),text=element_text(size=9),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  theme(line=element_line(size=.3),text=element_text(size=9),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "right",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
   facet_wrap(vars(CommunityType),strip.position = "bottom")
-dev.off()
+#dev.off()
 
-#symbionts
+m0<-gls(Pathotroph ~ Treatment*Site, na.action=na.omit,data = temp2)#random=~1|SitePlot/Chamber,
+anova(m0,type="margin")
+mc<-gls(Pathotroph ~ SiteTreatment,na.action=na.omit, data = temp2)#, random=~1|SitePlot/Chamber
+summary(glht(mc, linfct = mcp(SiteTreatment=c("TroughExperimental-TroughControl=0","AudubonExperimental-AudubonControl=0","LeftyExperimental-LeftyControl=0","EastKnollExperimental-EastKnollControl=0"))))
+
+
+#Symbionts
+ggplot(temp2, aes(x=Treatment,y=Symbiotroph))+
+  geom_boxplot()+
+  facet_wrap(~SampleType,scales="free")
+
 m1<-temp%>%
   filter(PlotType!="Survey")%>%
   group_by(SampleType,CommunityType,Treatment)%>%
@@ -596,22 +706,50 @@ m1
 m1$CommunityType<-factor(m1$CommunityType,levels=c("WM","MM","DM"))
 #m1$CommunityType<-recode_factor(m1$CommunityType,"C"="Control","E"="Treatment")
 
-pdf("Figs/SymbiontsExperiment.pdf",width=3.2,height=2.2)
+#pdf("Figs/SymbiontsExperiment.pdf",width=3.2,height=2.2)
 ggplot(data=m1, aes(x=Treatment, y=mean,color=SampleType))+   
   geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2,size=.5)+
   geom_point(size=1.8,show.legend = FALSE)+#, aes(group=Seed.Origin, fill=Seed.Origin, shape=Seed.Origin, color = Seed.Origin)
   ylab("Symbionts %")+
   #  ylim(5,60)+
   theme_classic()+
-  theme(line=element_line(size=.3),text=element_text(size=9),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  theme(line=element_line(size=.3),text=element_text(size=9),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "right",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
   facet_wrap(vars(CommunityType),strip.position = "bottom")
-dev.off()
+#dev.off()
+
+#temp2$SiteTreatment<-factor(temp2$SiteTreatment,levels=c("AudubonControl","AudubonExperimental","EastKnollControl","EastKnollExperimental","LeftyControl","LeftyExperimental","TroughControl","TroughExperimental"))
+m0<-gls(Symbiotroph ~ Site*Treatment, na.action=na.omit,data = temp2)#random=~1|SitePlot/Chamber,
+anova(m0,type="margin")
+mc<-gls(Symbiotroph ~ SiteTreatment,na.action=na.omit, data = temp2)#, random=~1|SitePlot/Chamber
+summary(glht(mc, linfct = mcp(SiteTreatment=c("TroughExperimental-TroughControl=0","AudubonExperimental-AudubonControl=0","LeftyExperimental-LeftyControl=0","EastKnollExperimental-EastKnollControl=0"))))
+
+
+#Saprotrophs
+m1<-temp%>%
+  filter(PlotType!="Survey")%>%
+  group_by(SampleType,CommunityType,Treatment)%>%
+  summarise(mean=mean(Saprotroph), se=std.error(Saprotroph))
+m1
+m1$CommunityType<-factor(m1$CommunityType,levels=c("WM","MM","DM"))
+#m1$CommunityType<-recode_factor(m1$CommunityType,"C"="Control","E"="Treatment")
+
+#pdf("Figs/PathogensExperiment.pdf",width=3.2,height=2.2)
+ggplot(data=m1, aes(x=Treatment, y=mean,color=SampleType))+   
+  geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2,size=.5)+
+  geom_point(size=1.8,show.legend = FALSE)+#, aes(group=Seed.Origin, fill=Seed.Origin, shape=Seed.Origin, color = Seed.Origin)
+  ylab("Saprotrophs %")+
+  #  ylim(5,60)+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=9),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "right",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  facet_wrap(vars(CommunityType),strip.position = "bottom")
+
+m0<-gls(Saprotroph ~ Treatment*Site, na.action=na.omit,data = temp2)#random=~1|SitePlot/Chamber,
+anova(m0,type="margin")
+mc<-gls(Saprotroph ~ SiteTreatment,na.action=na.omit, data = temp2)#, random=~1|SitePlot/Chamber
+summary(glht(mc, linfct = mcp(SiteTreatment=c("TroughExperimental-TroughControl=0","AudubonExperimental-AudubonControl=0","LeftyExperimental-LeftyControl=0","EastKnollExperimental-EastKnollControl=0"))))
 
 
 
-dat17b<-dat17%>%
-  full_join(funguild5)
-dat17<-dat17b
 
 #To get "Plant Pathogen" or "Endophyte" or "Arbuscular Mycorrhizal"
 funguild2<-funguild%>%
@@ -630,9 +768,6 @@ funguild5<-funguild4%>%
 funguild5$Plot<-as.numeric(sub("s","",funguild5$Plot))
 funguild5[,1:3]<-funguild5[,1:3]/5984*100
 
-dat17b<-dat17%>%
-  full_join(funguild5)
-dat17<-dat17b
 
 #Note: any taxon classified as one thing (i.e. plant pathogen with nothing else) always gets at least a probable, no possibles.
 #Trying taking out the "probables" for plant pathogens so it only includes highly probable. if i do this, there are only 7 non zero plots for plant pathogens, so that's not reasonable 
@@ -698,3 +833,40 @@ funguild5[,1]<-funguild5[,1]/5984*100
 dat17b<-dat17%>%
   full_join(funguild5)
 dat17<-dat17b
+
+
+##### FungalTraits from microeco package #####
+#see https://chiliubio.github.io/microeco_tutorial/explainable-class.html#trans_func-class
+#see https://chiliubio.github.io/microeco_tutorial/other-dataset.html#fungi-data
+
+datITSS5c
+
+me_otuITS<-data.frame(t(otu_table(datITSS5c)))
+me_taxITS<-data.frame(tax_table(datITSS5c))
+me_taxITS2<-tidy_taxonomy(me_taxITS)
+#note the species column only has species, not genus and species, not sure if this will be a problem
+me_samITS<-data.frame(sample_data(datITSS5c))
+
+mt_fungi <- microtable$new(otu_table = me_otuITS, sample_table = me_samITS, tax_table = me_taxITS2)
+mt_fungi
+mt_fungi$tidy_dataset()
+
+t1_fungi <- trans_func$new(mt_fungi)
+t1_fungi$cal_spe_func(fungi_database = "FungalTraits")
+t1_fungi$cal_spe_func_perc(abundance_weighted = T, perc = T)#perc means make it a percent vs ratio, but still the total percentage in a sample is like 400%. that is probably b/c it is including primary and secondary functions
+t1_fungi$res_spe_func_raw_FungalTraits
+View(t1_fungi$res_spe_func_raw_FungalTraits)
+t1_fungi$res_spe_func_perc
+View(t1_fungi$res_spe_func_perc)
+#Columns 1:22 are primary lifestyles, they add up to about 50% of the taxa, which probably makes sense, 50% of the taxa are classified as something
+t1_fungi$res_spe_func_perc[1:5,22:23]
+rowSums(t1_fungi$res_spe_func_perc[,1:22])
+
+
+#Differential test
+tmp_mt_fungi <- clone(mt_fungi)
+tmp_mt_fungi$taxa_abund$func <- as.data.frame(t(t1_fungi$res_spe_func_perc), check.names = FALSE)
+t2_fungi <- trans_diff$new(dataset = tmp_mt_fungi, method = "anova", group = "SiteTreatment", taxa_level = "func")
+t2_fungi$res_diff
+t2_fungi$plot_diff_abund(add_sig = T, simplify_names = FALSE) + ggplot2::ylab("Relative abundance (%)")
+

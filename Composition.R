@@ -10,27 +10,106 @@ datITSS5cE
 dat16SS5cE
 
 
+##### Ordinate all plots by site #####
+dat16SS5c
+datITSS5c
+
+tempphy<-dat16SS5c%>%
+  subset_samples(SampleType=="soil")%>%
+  subset_samples(Site=="Trough")%>%
+  #subset_samples(CommunityType!="WM")%>%
+  filter_taxa(function(x) sum(x>0) >2, prune=T)%>%
+  transform_sample_counts(function(x) x/sum(x))
+sample_data(tempphy)$PlotCommunity<-paste(sample_data(tempphy)$PlotType,sample_data(tempphy)$CommunityType,sep="")
+unique(sample_data(tempphy)$PlotCommunity)
+
+mynmdsplot <- ordinate(tempphy, "CAP", "bray",formula=as.formula(~PlotCommunity))
+#mynmdsplot <- ordinate(tempphy, "NMDS", "bray")
+plot_ordination(tempphy, mynmdsplot, type="samples", color="PlotCommunity",axes=c(3,4))+
+  theme_classic()+#  theme(legend.position = "none")
+  geom_point(size = 2)+#
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=PlotCommunity),level=.95)
+
+tempphy<-dat16SS5c%>%
+  subset_samples(SampleType=="soil")%>%
+  subset_samples(Site=="Audubon")%>%
+  #subset_samples(CommunityType!="WM")%>%
+  filter_taxa(function(x) sum(x>0) >2, prune=T)%>%
+  transform_sample_counts(function(x) x/sum(x))
+sample_data(tempphy)$PlotCommunity<-paste(sample_data(tempphy)$PlotType,sample_data(tempphy)$CommunityType,sep="")
+unique(sample_data(tempphy)$PlotCommunity)
+
+mynmdsplot <- ordinate(tempphy, "CAP", "bray",formula=as.formula(~PlotCommunity))
+plot_ordination(tempphy, mynmdsplot, type="samples", color="PlotCommunity",axes=c(1,2))+
+  theme_classic()+#  theme(legend.position = "none")
+  geom_point(size = 2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=PlotCommunity),level=.95)
+
+tempphy<-dat16SS5c%>%
+  subset_samples(SampleType=="soil")%>%
+  subset_samples(Site=="Lefty")%>%
+  #subset_samples(CommunityType!="WM")%>%
+  filter_taxa(function(x) sum(x>0) >2, prune=T)%>%
+  transform_sample_counts(function(x) x/sum(x))
+sample_data(tempphy)$PlotCommunity<-paste(sample_data(tempphy)$PlotType,sample_data(tempphy)$CommunityType,sep="")
+unique(sample_data(tempphy)$PlotCommunity)
+
+mynmdsplot <- ordinate(tempphy, "CAP", "bray",formula=as.formula(~PlotCommunity))
+plot_ordination(tempphy, mynmdsplot, type="samples", color="PlotCommunity",axes=c(1,2))+
+  theme_classic()+#  theme(legend.position = "none")
+  geom_point(size = 2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=PlotCommunity),level=.95)
+
+tempphy<-dat16SS5c%>%
+  subset_samples(SampleType=="soil")%>%
+  subset_samples(Site=="EastKnoll")%>%
+  #subset_samples(CommunityType!="WM")%>%
+  filter_taxa(function(x) sum(x>0) >2, prune=T)%>%
+  transform_sample_counts(function(x) x/sum(x))
+sample_data(tempphy)$PlotCommunity<-paste(sample_data(tempphy)$PlotType,sample_data(tempphy)$CommunityType,sep="")
+unique(sample_data(tempphy)$PlotCommunity)
+
+mynmdsplot <- ordinate(tempphy, "CAP", "bray",formula=as.formula(~PlotCommunity))
+plot_ordination(tempphy, mynmdsplot, type="samples", color="PlotCommunity",axes=c(1,2))+
+  theme_classic()+#  theme(legend.position = "none")
+  geom_point(size = 2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=PlotCommunity),level=.95)
+
+
+
 ##### Ordination Survey #####
+#in elevation it goes trough, lefty, audubon, east knoll
 
 tempphyS<-dat16SS5cS%>%
   subset_samples(SampleType=="soil")%>%
   #subset_samples(Site=="Trough")%>%
   subset_samples(CommunityType!="WM")%>%
-  filter_taxa(function(x) sum(x>0) >2, prune=T)
+  filter_taxa(function(x) sum(x>0) >2, prune=T)%>%
+  transform_sample_counts(function(x) x/sum(x))
 
-mynmdsS <- ordinate(tempphyS, "CAP", "bray",formula=as.formula(~CommunityType*Site))
+mynmdsS <- ordinate(tempphyS, "CAP", "bray",formula=as.formula(~CommunityType*Site))#+Condition(CommunityType+Site)
 anova(mynmdsS,by="terms",permutations = how(blocks=sample_data(tempphyS)$Site,nperm=999))
- 
-# mynmdsplot <- ordinate(tempphyS, "CAP", "bray",formula=as.formula(~SiteCommunityType))
-mynmdsplot <- ordinate(tempphyS, "CAP", "bray",formula=as.formula(~SiteCommunityType))
+anova(mynmdsS,by="margin",permutations = how(nperm=999))
+summary(mynmdsS)
 
-plot_ordination(tempphyS, mynmdsplot, type="samples", color="CommunityType",axes=c(3,4))+
+mynmdsplot <- ordinate(tempphyS, "CAP", "bray",formula=as.formula(~SiteCommunityType))
+#mynmdsplot <- ordinate(tempphyS, "CAP", "bray",formula=as.formula(~CommunityType))
+
+plot_ordination(tempphyS, mynmdsplot, type="samples", color="CommunityType",axes=c(1,2))+
   theme_classic()+#  theme(legend.position = "none")
   geom_point(size = 2)+
   #scale_color_manual(values = c("#0047b3", "#99c2ff","#2d862d","#b30000","#ff8080"),labels = c("SB", "WM","MM","DM","FF"),name = "Community Type")+#,"#79d279"
   #scale_fill_manual(values = c("#0047b3", "#99c2ff","#2d862d","#b30000","#ff8080"),labels = c("SB", "WM","MM","DM","FF"),name = "Community Type")+
-  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=CommunityType),level=.95)+
+  #stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=CommunityType),level=.95)+
   facet_wrap(~Site)
+
+plot_ordination(tempphyS, mynmdsplot, type="samples", color="Site",axes=c(1,2))+
+  theme_classic()+#  theme(legend.position = "none")
+  geom_point(size = 2)+
+  #scale_color_manual(values = c("#0047b3", "#99c2ff","#2d862d","#b30000","#ff8080"),labels = c("SB", "WM","MM","DM","FF"),name = "Community Type")+#,"#79d279"
+  #scale_fill_manual(values = c("#0047b3", "#99c2ff","#2d862d","#b30000","#ff8080"),labels = c("SB", "WM","MM","DM","FF"),name = "Community Type")+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=Site),level=.95)+
+  facet_wrap(~CommunityType)
 
 plot_ordination(tempphyS, mynmdsplot, type="samples", color="Site",axes=c(1,2))+
   theme_classic()+#  theme(legend.position = "none")
@@ -49,6 +128,58 @@ plot_ordination(tempphyS, mynmdsS, type="samples", color="CommunityType",axes=c(
   stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=CommunityType),level=.95)
 #dev.off()
 
+
+###### survey - Ordinating each site separately ######
+
+tempphyS<-dat16SS5cS%>%
+  subset_samples(SampleType=="roots")%>%
+  subset_samples(Site=="Trough")%>%
+  subset_samples(CommunityType!="WM")%>%
+  filter_taxa(function(x) sum(x>0) >2, prune=T)
+mynmdsplotS <- ordinate(tempphyS, "CAP", "bray",formula=as.formula(~CommunityType))
+anova(mynmdsplotS,by="terms",permutations = how(nperm=999))
+tr<-plot_ordination(tempphyS, mynmdsplotS, type="samples", color="CommunityType",axes=c(1,2))+
+  theme_classic()+#  theme(legend.position = "none")
+  geom_point(size = 2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=CommunityType),level=.95)
+
+tempphyS<-dat16SS5cS%>%
+  subset_samples(SampleType=="roots")%>%
+  subset_samples(Site=="Lefty")%>%
+  subset_samples(CommunityType!="WM")%>%
+  filter_taxa(function(x) sum(x>0) >2, prune=T)
+mynmdsplotS <- ordinate(tempphyS, "CAP", "bray",formula=as.formula(~CommunityType))
+anova(mynmdsplotS,by="terms",permutations = how(nperm=999))
+le<-plot_ordination(tempphyS, mynmdsplotS, type="samples", color="CommunityType",axes=c(1,2))+
+  theme_classic()+#  theme(legend.position = "none")
+  geom_point(size = 2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=CommunityType),level=.95)
+
+tempphyS<-dat16SS5cS%>%
+  subset_samples(SampleType=="roots")%>%
+  subset_samples(Site=="Audubon")%>%
+  subset_samples(CommunityType!="WM")%>%
+  filter_taxa(function(x) sum(x>0) >2, prune=T)
+mynmdsplotS <- ordinate(tempphyS, "CAP", "bray",formula=as.formula(~CommunityType))
+anova(mynmdsplotS,by="terms",permutations = how(nperm=999))
+au<-plot_ordination(tempphyS, mynmdsplotS, type="samples", color="CommunityType",axes=c(1,2))+
+  theme_classic()+#  theme(legend.position = "none")
+  geom_point(size = 2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=CommunityType),level=.95)
+
+tempphyS<-dat16SS5cS%>%
+  subset_samples(SampleType=="roots")%>%
+  subset_samples(Site=="EastKnoll")%>%
+  subset_samples(CommunityType!="WM")%>%
+  filter_taxa(function(x) sum(x>0) >2, prune=T)
+mynmdsplotS <- ordinate(tempphyS, "CAP", "bray",formula=as.formula(~CommunityType))
+anova(mynmdsplotS,by="terms",permutations = how(nperm=999))
+ek<-plot_ordination(tempphyS, mynmdsplotS, type="samples", color="CommunityType",axes=c(1,2))+
+  theme_classic()+#  theme(legend.position = "none")
+  geom_point(size = 2)+
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=CommunityType),level=.95)
+
+plot_grid(tr,le,au,ek, nrow = 2,labels=c("a) Trough","b) Lefty","c) Audubon","d) East Knoll"),label_size=10,hjust=-.17,vjust=1.2,scale=1,label_fontface = "plain")#legend
 
 
 
@@ -170,7 +301,7 @@ plot_ordination(tempphyE, mynmdsE, type="samples", color="Treatment",axes=c(1,2)
 
 #If i want to do this better I need to make a single phyloseq object with all sites but with deleting the plots in each site that are necessary. it would just take a bit to do this
 
-#In general, not surprisingly, the expermimental plots are not moving toward or overlapping the next warmer/drier community type, they are going off in their own direction
+#In general, not surprisingly, the experimental plots are not moving toward or overlapping the next warmer/drier community type, they are going off in their own direction
 
 #Trough, the WM treatment plots are not moving toward the MM plots
 dat16SS5cTrough

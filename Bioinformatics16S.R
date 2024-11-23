@@ -564,17 +564,20 @@ dat16SS5cotu_r4903<-cbind(sample_data(dat16SS5c_r4903),otu_table(dat16SS5c_r4903
 
 
 
-#Richness
+###### Richness ######
 
 rich16S<-estimate_richness(dat16SS5c, split = TRUE, measures = c("Observed", "Shannon","Chao1","Simpson","InvSimpson"))
 colnames(rich16S)<-c("Richness16S","Chao116S","se.chao116S","Shannon16S","Simpson16S","InvSimpson16S")
-rich16S$SampleID<-rownames(rich16S)
+rich16S$SampleNumber<-rownames(rich16S)
 #richITS2<-separate(richITS,SampleID,c(NA,"Plot"),"s")
 #richITS2$Plot<-as.numeric(richITS2$Plot)
-#richITS2<-richITS%>%
-#  left_join(data.frame(sample_data(datITS2rcsoil)))
-#sample_data(datITSS5c)[,]
+rich16S2<-rich16S%>%
+  left_join(data.frame(sample_data(dat16SS5c)))%>%
+  dplyr::select(Richness16S:PlotID,SampleType)%>%
+  dplyr::select(-SampleNumber)%>%
+  pivot_wider(names_from = SampleType,values_from = Richness16S:InvSimpson16S)
 
+  
 rich16S_r4903<-estimate_richness(dat16SS5c_r4903, split = TRUE, measures = c("Observed", "Shannon","Chao1","Simpson","InvSimpson"))
 colnames(rich16S_r4903)<-c("Richness16S","Chao116S","se.chao116S","Shannon16S","Simpson16S","InvSimpson16S")
 rich16S_r4903$SampleID<-rownames(rich16S_r4903)
