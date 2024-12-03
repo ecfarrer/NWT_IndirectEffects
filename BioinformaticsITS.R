@@ -851,6 +851,7 @@ mt_fungi <- microtable$new(otu_table = me_otuITS, sample_table = me_samITS, tax_
 mt_fungi
 mt_fungi$tidy_dataset()
 
+###### Using abundance weighted ######
 t1_fungi <- trans_func$new(mt_fungi)
 t1_fungi$cal_spe_func(fungi_database = "FungalTraits")
 t1_fungi$cal_spe_func_perc(abundance_weighted = T, perc = T)#perc means make it a percent vs ratio, but still the total percentage in a sample is like 400%. that is probably b/c it is including primary and secondary functions
@@ -862,11 +863,90 @@ View(t1_fungi$res_spe_func_perc)
 t1_fungi$res_spe_func_perc[1:5,22:23]
 rowSums(t1_fungi$res_spe_func_perc[,1:22])
 
+#What i should do: 
+#sum percentages for Plant_pathogenic_capacity, Endophytic_interaction_capacity, and Decay_substrate
+#alternatively I could sum percentages for primary lifestyle or primary+secondary lifestyle
+
+#Sum percentages for Plant_pathogenic_capacity, Endophytic_interaction_capacity, and Decay_substrate
+funtraits<-t1_fungi$res_spe_func_perc
+colnames(funtraits)
+#Columns 55 to 61 are Plant_pathogenic_capacity
+funtraits$PathogensFT<-base::rowSums(funtraits[,55:61])
+#Columns 48 to 54 are Endophytic_interaction_capability, but 51 is no endophytic capacity
+funtraits$EndophytesFT<-base::rowSums(funtraits[,48:50])+base::rowSums(funtraits[,52:54])
+#Columns 62 to 74 are Decay_substrate
+funtraits$SaptrotophsFT<-base::rowSums(funtraits[,62:74])
+
+#Useful primary function categories
+#primary_lifestyle|arbuscular_mycorrhizal
+#primary_lifestyle|ectomycorrhizal
+#primary_lifestyle|foliar_endophyte
+#primary_lifestyle|litter_saprotroph
+#primary_lifestyle|plant_pathogen
+#primary_lifestyle|root_endophyte
+#primary_lifestyle|soil_saprotroph
+
+#Sum percentages for primary + secondary functions
+#there are no secondary lifestyle|arbuscular_mycorrhizae or Secondary_lifestyle|ectomycorrhizal
+head(funtraits)
+funtraits$PrimandSecfoliar_endophyteFT<-funtraits[,"primary_lifestyle|foliar_endophyte"]+funtraits[,"Secondary_lifestyle|foliar_endophyte"]
+funtraits$PrimandSeclitter_saprotrophFT<-funtraits[,"primary_lifestyle|litter_saprotroph"]+funtraits[,"Secondary_lifestyle|litter_saprotroph"]
+funtraits$PrimandSecplant_pathogenFT<-funtraits[,"primary_lifestyle|plant_pathogen"]+funtraits[,"Secondary_lifestyle|plant_pathogen"]
+funtraits$PrimandSecroot_endophyteFT<-funtraits[,"primary_lifestyle|root_endophyte"]+funtraits[,"Secondary_lifestyle|root_endophyte"]
+funtraits$PrimandSecsoil_saprotrophFT<-funtraits[,"primary_lifestyle|soil_saprotroph"]+funtraits[,"Secondary_lifestyle|soil_saprotroph"]
+
+colnames(sample_data(datITSS5c))
+colnames(dat)
+colnames(funtraits)
+#to do: take only columns I want from data and sample_data and then join with the funtraits
+funtraits$SampleNumber=rownames(funtraits)
+temp<-dat%>%
+  dplyr::select(PlotID,Plot)
+funtraits2<-data.frame(sample_data(datITSS5c))%>%
+  full_join(temp)%>%
+  full_join(funtraits)%>%
+  dplyr::select(-DateCollected,-DateExtracted,-Extraction_ng_ul,-Sample_or_Control,-is.neg)
+head(funtraits2)
+#change | in column names to .
+names(funtraits2) <- gsub(x = names(funtraits2), pattern = "\\|", replacement = ".")  
+#change - in columns to nothing ""
+names(funtraits2) <- gsub(x = names(funtraits2), pattern = "\\-", replacement = "")  
+funtraits2$MoistureType<-funtraits2$CommunityType
+ind<-funtraits2$MoistureType=="WM"
+funtraits2$MoistureType[ind]<-"MM"
+funtraits2$MoistureTreatment<-factor(paste(funtraits2$MoistureType,funtraits2$Treatment,sep="_"))
+
 
 #Differential test
-tmp_mt_fungi <- clone(mt_fungi)
-tmp_mt_fungi$taxa_abund$func <- as.data.frame(t(t1_fungi$res_spe_func_perc), check.names = FALSE)
-t2_fungi <- trans_diff$new(dataset = tmp_mt_fungi, method = "anova", group = "SiteTreatment", taxa_level = "func")
-t2_fungi$res_diff
-t2_fungi$plot_diff_abund(add_sig = T, simplify_names = FALSE) + ggplot2::ylab("Relative abundance (%)")
+# tmp_mt_fungi <- clone(mt_fungi)
+# tmp_mt_fungi$taxa_abund$func <- as.data.frame(t(t1_fungi$res_spe_func_perc), check.names = FALSE)
+# t2_fungi <- trans_diff$new(dataset = tmp_mt_fungi, method = "anova", group = "SiteTreatment", taxa_level = "func")
+# t2_fungi$res_diff
+# t2_fungi$plot_diff_abund(add_sig = T, simplify_names = FALSE) + ggplot2::ylab("Relative abundance (%)")
+
+
+###### NOT using abundance weighted ######
+#Just percentage of taxa, for functional redundancy
+t1_fungi$cal_spe_func_perc(abundance_weighted = F, perc = T)#perc means make it a percent vs ratio
+t1_fungi$res_spe_func_raw_FungalTraits
+View(t1_fungi$res_spe_func_raw_FungalTraits)
+t1_fungi$res_spe_func_perc
+View(t1_fungi$res_spe_func_perc)
+#Columns 1:22 are primary lifestyles, they add up to about 50% of the taxa, which probably makes sense, 50% of the taxa are classified as something
+t1_fungi$res_spe_func_perc[1:5,22:23]
+rowSums(t1_fungi$res_spe_func_perc[,1:22])
+
+funtraitsnotabunweigh<-t1_fungi$res_spe_func_perc
+colnames(funtraitsnotabunweigh)
+#Columns 55 to 61 are Plant_pathogenic_capacity
+funtraitsnotabunweigh$PathogensFT<-base::rowSums(funtraitsnotabunweigh[,55:61])
+#Columns 48 to 54 are Endophytic_interaction_capability
+funtraitsnotabunweigh$EndophytesFT<-base::rowSums(funtraitsnotabunweigh[,48:54])
+#Columns 62 to 74 are Decay_substrate
+funtraitsnotabunweigh$SaptrotophsFT<-base::rowSums(funtraitsnotabunweigh[,62:74])
+
+
+
+
+
 
