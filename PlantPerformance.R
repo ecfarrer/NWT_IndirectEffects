@@ -26,7 +26,7 @@ ggplot(datS, aes(x=Site,y=SoilMoisturePercent))+
   geom_boxplot()
 
 m1<-datS%>%
-  group_by(CommunityType)%>%
+  group_by(CommunityType,Site)%>%
   summarise(mean=mean(SoilMoisturePercent), se=std.error(SoilMoisturePercent))
 m1
 
@@ -40,14 +40,15 @@ ggplot(data=m1, aes(x=CommunityType, y=mean))+
   theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside")
 #dev.off()
 
-ggplot(data=datS, aes(x=CommunityType, y=SoilMoisturePercent))+   
-  geom_point(data=datS,size=1.8,aes(color=CommunityType,group=CommunityType),position = position_dodge(0.8))
+ggplot(data=m1, aes(x=CommunityType, y=mean))+   
+  geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2,size=.5)+
   geom_point(size=1.8,show.legend = FALSE)+#, aes(group=Seed.Origin, fill=Seed.Origin, shape=Seed.Origin, color = Seed.Origin)
   ylab("Soil moisture %")+
-  geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2,size=.5)+
-    #ylim(5,60)+
+  #ylim(5,60)+
   theme_classic()+
-  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside")
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside")+
+  facet_wrap(~Site)
+
 
 #code from mangroves for standard error bars and points
 prbi<-
@@ -85,9 +86,11 @@ summary(glht(mc, linfct = mcp(SubstrateInoculum=c("GlassAutoclaved-DredgeAutocla
 
 ggplot(datE, aes(x=MoistureTreatment,y=SoilMoisturePercent))+
   geom_boxplot()
+ggplot(datE, aes(x=Site,y=SoilMoisturePercent))+
+  geom_boxplot()
 
 m1<-datE%>%
-  group_by(MoistureType,Treatment)%>%
+  group_by(Site,Treatment)%>%
   summarise(mean=mean(SoilMoisturePercent), se=std.error(SoilMoisturePercent))
 m1
 #m1$Proj<-recode_factor(m1$Proj,"C"="Control","E"="Treatment")
@@ -101,17 +104,63 @@ ggplot(data=m1, aes(x=Treatment, y=mean))+
   #ylim(5,60)+
   theme_classic()+
   theme(line=element_line(size=.3),text=element_text(size=9),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
-  facet_wrap(vars(MoistureType),strip.position = "bottom")
+  facet_wrap(vars(Site),strip.position = "bottom",nrow=1)
 #dev.off()
 
 
 #Statistics
 
+datE$Treatment<-factor(datE$Treatment,levels=c("Control","Experimental"))
+
 m0<-gls(SoilMoisturePercent ~ Treatment*MoistureType,  data = datE)
 anova(m0,type="margin")
 
+m0<-lme(SoilMoisturePercent ~ Treatment*Site, random=~1|SitePlot/Chamber, data = datE)
+anova(m0,type="margin")
+summary(glht(m0, linfct = mcp(Site="Tukey")))
+m0<-lme(SoilMoisturePercent ~ Site, random=~1|SitePlot/Chamber, data = datE)
+summary(glht(m0, linfct = mcp(Site="Tukey")))
+#summary(glht(mc, linfct = mcp(MoistureTreatment=c("MM_Experimental-MM_Control=0","DM_Experimental-DM_Control=0"))))
+
 m0<-lme(SoilMoisturePercent ~ Treatment, random=~1|Site/Treatment/Plot, data = datE)
 anova(m0,type="margin")
+
+
+##### Microbe Richness #####
+
+#dat, datS, datE
+
+dat$PlotCommunity<-paste(dat$PlotType,dat$CommunityType,sep="")
+
+# m1<-dat%>%
+#   filter(Site=="Trough")%>%
+#   group_by(PlotCommunity)%>%
+#   summarise(across(c(Chao1ITS_roots,Chao1ITS_soil,Chao116S_roots,Chao116S_soil,RichnessITS_roots,RichnessITS_soil,Richness16S_roots,Richness16S_soil),list(se=std.error, mean=~mean(.x, na.rm = TRUE))))
+# data.frame(m1)
+
+dat2<-dat%>%
+  filter(Site=="EastKnoll")
+
+m1<-dat%>%
+  filter(Site=="EastKnoll")%>%
+  group_by(PlotCommunity)%>%
+  summarise(se=std.error(Chao116S_soil),Chao116S_soil=mean(Chao116S_soil,na.rm=T))
+m1
+
+ggplot(dat2, aes(x=PlotCommunity, y=Chao116S_soil, color=PlotCommunity))+   
+  ylab("Richness")+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  geom_point(data=m1,size=1.8,aes(color=PlotCommunity,group=PlotCommunity))+
+  geom_point(size=.7,aes(fill=PlotCommunity,group=PlotCommunity),position = position_jitterdodge(jitter.width=.25),alpha=rep(.4,dim(dat2)[1]))+
+  geom_errorbar(data=m1,aes(ymax=Chao116S_soil+se,ymin=Chao116S_soil-se),width=.3)
+
+
+m0<-lme(Chao116S_roots ~ Treatment*MoistureType, random=~1|SitePlot/Chamber, na.action=na.omit,data = datE)
+anova(m0,type="margin")
+mc<-lme(Chao116S_roots ~ MoistureTreatment, random=~1|SitePlot/Chamber,na.action=na.omit, data = datE)
+summary(glht(mc, linfct = mcp(MoistureTreatment=c("MM_Experimental-MM_Control=0","DM_Experimental-DM_Control=0"))))
+
 
 
 
@@ -519,3 +568,44 @@ ggplot(uamf2, aes(x=Treatment, y=ArbusculesP, color=Treatment))+
 
 
 
+##### Lat/Lon #####
+
+#For Trough, the SB and FF are really close to eachother and MM is far away from all other plots. That's a little odd.
+dattemp<-dat%>%
+  filter(Site=="Trough")%>%
+  dplyr::select(PlotType, CommunityType,Latitude, Longitude)%>%
+  group_by(PlotType,CommunityType)%>%
+  summarise(Lat=mean(Latitude),Lon=mean(Longitude))
+
+ggplot(dattemp, aes(x=Lon,y=Lat,color=CommunityType))+
+  geom_point(size=2)
+
+#For Lefty, SB is really far from everything
+dattemp<-dat%>%
+  filter(Site=="Lefty")%>%
+  dplyr::select(PlotType, CommunityType,Latitude, Longitude)%>%
+  group_by(PlotType,CommunityType)%>%
+  summarise(Lat=mean(Latitude, na.rm=T),Lon=mean(Longitude, na.rm=T))
+
+ggplot(dattemp, aes(x=Lon,y=Lat,color=CommunityType, shape=PlotType))+
+  geom_point(size=2)
+
+#For Audubon, FF is a bit far from everything else, but not too much
+dattemp<-dat%>%
+  filter(Site=="Audubon")%>%
+  dplyr::select(PlotType, CommunityType,Latitude, Longitude)%>%
+  group_by(PlotType,CommunityType)%>%
+  summarise(Lat=mean(Latitude, na.rm=T),Lon=mean(Longitude, na.rm=T))
+
+ggplot(dattemp, aes(x=Lon,y=Lat,color=CommunityType, shape=PlotType))+
+  geom_point(size=2)
+
+#For EastKnoll, FF is a bit far from everything else, but not too much
+dattemp<-dat%>%
+  filter(Site=="EastKnoll")%>%
+  dplyr::select(PlotType, CommunityType,Latitude, Longitude)%>%
+  group_by(PlotType,CommunityType)%>%
+  summarise(Lat=mean(Latitude, na.rm=T),Lon=mean(Longitude, na.rm=T))
+
+ggplot(dattemp, aes(x=Lon,y=Lat,color=CommunityType, shape=PlotType))+
+  geom_point(size=2)
