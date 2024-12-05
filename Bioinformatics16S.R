@@ -609,7 +609,7 @@ dat17<-dat17b
 install.packages("microeco")
 library(microeco)
 
-
+#This is where all the function help is
 ?trans_func
 
 #I'll use the cleaned, rarefied, count phyloseq object
@@ -623,25 +623,52 @@ me_sam<-data.frame(sample_data(dat16SS5c))
   
 mt <- microtable$new(otu_table = me_otu, sample_table = me_sam, tax_table = me_tax2)
 mt
-
 mt$tidy_dataset() #it was already tidy, this didn't do anything
+#mt$sample_sums() %>% range #this is the # reads 2073
 
-mt$sample_sums() %>% range
 
+###### Using abundance weighted ######
 t2 <- trans_func$new(mt)
-t2
 t2$cal_spe_func(prok_database = "FAPROTAX")
 t2$res_spe_func[1:5, 1:22]
 colSums(t2$res_spe_func)
 
-t2$cal_spe_func_perc(abundance_weighted = TRUE)
+t2$cal_spe_func_perc(abundance_weighted = TRUE,perc=T)
 #the result is store in t2$res_spe_func_perc
 t2$res_spe_func_perc
+dim(t2$res_spe_func_perc)
 
+bactraits<-t2$res_spe_func_perc
+
+colnames(sample_data(dat16SS5c))
+colnames(dat)
+colnames(bactraits)
+#to do: take only columns I want from data and sample_data and then join with the funtraits
+bactraits$SampleNumber=rownames(bactraits)
+temp<-dat%>%
+  dplyr::select(PlotID,Plot)
+bactraits2<-data.frame(sample_data(dat16SS5c))%>%
+  full_join(temp)%>%
+  full_join(bactraits)%>%
+  dplyr::select(-DateCollected,-DateExtracted,-Extraction_ng_ul,-Sample_or_Control,-is.neg)
+head(bactraits2)
+bactraits2$MoistureType<-bactraits2$CommunityType
+ind<-bactraits2$MoistureType=="WM"
+bactraits2$MoistureType[ind]<-"MM"
+bactraits2$MoistureTreatment<-factor(paste(bactraits2$MoistureType,bactraits2$Treatment,sep="_"))
+bactraits2$SitePlot<-factor(paste(bactraits2$Site,bactraits2$Plot,sep="_"))
+
+
+
+
+
+
+#for long format, not sure if I need this
 t2$trans_spe_func_perc()
 #Transformed long format table is stored in t2$res_spe_func_perc_trans
 t2$res_spe_func_perc_trans
-t2$plot_spe_func_perc()
+#t2$plot_spe_func_perc()
+
 
 #Clone the dataset (I still dont understand this)
 tmp_mt <- clone(mt)
@@ -711,157 +738,4 @@ mt_soil2$plot_diff_abund(use_number=1:30,add_sig = T,group_order=c("SB","WM","MM
 
 
 
-funguild3<-funguild2%>%
-  filter(Trophic.Mode%in%c("Symbiotroph","Pathotroph","Saprotroph"))%>%
-  #filter(Confidence.Ranking%in%c("Probable","Highly Probable"))%>%
-  arrange(Trophic.Mode)%>%
-  dplyr::select(r1:s99,Trophic.Mode)%>%
-  group_by(Trophic.Mode)%>%
-  summarise_all(list(sum=sum))
-funguild4<-data.frame(funguild3)
-row.names(funguild4)<-funguild3$Trophic.Mode;funguild4$Trophic.Mode<-NULL
-funguild5<-data.frame(t(funguild4))
-head(funguild5)
-funguild5$SampleNumbertemp<-row.names(funguild5)
-funguild6<-funguild5%>%
-  separate(SampleNumbertemp,into=c("SampleNumber",NA))
-#funguild6$SampleNumber<-as.numeric(sub("X","",funguild6$SampleNumber))
-funguild6[,1:3]<-funguild6[,1:3]/4476*100
 
-temp<-sample_data(datITSS5c)
-cbind(temp$SampleNumber,funguild5$SampleNumber)
-temp[,18:20]<-funguild6[,1:3]
-temp<-data.frame(temp)
-
-#Make a graph for annual report
-#pathogens
-m1<-temp%>%
-  filter(PlotType!="Survey")%>%
-  group_by(SampleType,CommunityType,Treatment)%>%
-  summarise(mean=mean(Pathotroph), se=std.error(Pathotroph))
-m1
-m1$CommunityType<-factor(m1$CommunityType,levels=c("WM","MM","DM"))
-#m1$CommunityType<-recode_factor(m1$CommunityType,"C"="Control","E"="Treatment")
-
-pdf("Figs/PathogensExperiment.pdf",width=3.2,height=2.2)
-ggplot(data=m1, aes(x=Treatment, y=mean,color=SampleType))+   
-  geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2,size=.5)+
-  geom_point(size=1.8,show.legend = FALSE)+#, aes(group=Seed.Origin, fill=Seed.Origin, shape=Seed.Origin, color = Seed.Origin)
-  ylab("Pathogens %")+
-  #  ylim(5,60)+
-  theme_classic()+
-  theme(line=element_line(size=.3),text=element_text(size=9),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
-  facet_wrap(vars(CommunityType),strip.position = "bottom")
-dev.off()
-
-#symbionts
-m1<-temp%>%
-  filter(PlotType!="Survey")%>%
-  group_by(SampleType,CommunityType,Treatment)%>%
-  summarise(mean=mean(Symbiotroph), se=std.error(Symbiotroph))
-m1
-m1$CommunityType<-factor(m1$CommunityType,levels=c("WM","MM","DM"))
-#m1$CommunityType<-recode_factor(m1$CommunityType,"C"="Control","E"="Treatment")
-
-pdf("Figs/SymbiontsExperiment.pdf",width=3.2,height=2.2)
-ggplot(data=m1, aes(x=Treatment, y=mean,color=SampleType))+   
-  geom_errorbar(aes(ymax=mean+se,ymin=mean-se),width=.2,size=.5)+
-  geom_point(size=1.8,show.legend = FALSE)+#, aes(group=Seed.Origin, fill=Seed.Origin, shape=Seed.Origin, color = Seed.Origin)
-  ylab("Symbionts %")+
-  #  ylim(5,60)+
-  theme_classic()+
-  theme(line=element_line(size=.3),text=element_text(size=9),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
-  facet_wrap(vars(CommunityType),strip.position = "bottom")
-dev.off()
-
-
-
-dat17b<-dat17%>%
-  full_join(funguild5)
-dat17<-dat17b
-
-#To get "Plant Pathogen" or "Endophyte" or "Arbuscular Mycorrhizal"
-funguild2<-funguild%>%
-  filter(Guild%in%c("Plant Pathogen","Endophyte","Arbuscular Mycorrhizal"))%>%
-  arrange(Guild)%>%
-  dplyr::select(s1:s98,Guild)%>%
-  group_by(Guild)%>%
-  summarise_all(list(sum=sum))
-funguild3<-data.frame(funguild2)
-row.names(funguild3)<-funguild3$Guild;funguild3$Guild<-NULL
-funguild4<-data.frame(t(funguild3))
-head(funguild4)
-funguild4$Plottemp<-row.names(funguild4)
-funguild5<-funguild4%>%
-  separate(Plottemp,into=c("Plot",NA))
-funguild5$Plot<-as.numeric(sub("s","",funguild5$Plot))
-funguild5[,1:3]<-funguild5[,1:3]/5984*100
-
-dat17b<-dat17%>%
-  full_join(funguild5)
-dat17<-dat17b
-
-#Note: any taxon classified as one thing (i.e. plant pathogen with nothing else) always gets at least a probable, no possibles.
-#Trying taking out the "probables" for plant pathogens so it only includes highly probable. if i do this, there are only 7 non zero plots for plant pathogens, so that's not reasonable 
-funguild2<-funguild%>% 
-  filter(Guild%in%c("Plant Pathogen","Endophyte","Arbuscular Mycorrhizal"))%>%
-  filter(Confidence.Ranking=="Highly Probable")%>%
-  arrange(Guild)%>%
-  dplyr::select(s1:s98,Guild)%>%
-  group_by(Guild)%>%
-  summarise_all(list(sum=sum))
-funguild3<-data.frame(funguild2)
-row.names(funguild3)<-funguild3$Guild;funguild3$Guild<-NULL
-funguild4<-data.frame(t(funguild3))
-head(funguild4)
-funguild4$Plottemp<-row.names(funguild4)
-funguild5<-funguild4%>%
-  separate(Plottemp,into=c("Plot",NA))
-funguild5$Plot<-as.numeric(sub("s","",funguild5$Plot))
-funguild5[,1:3]<-funguild5[,1:3]/5984*100
-colnames(funguild5)[1:3]<-c("Arbuscular.Mycorrhizalhighlyprobable","Endophytehighlyprobable","Plant.Pathogenhighlyprobable")
-
-dat17b<-dat17%>%
-  full_join(funguild5)
-dat17<-dat17b
-
-#Getting data for ectomycorrhizal
-funguild2<-funguild%>% 
-  filter(Guild%in%c("Ectomycorrhizal"))%>%
-  arrange(Guild)%>%
-  dplyr::select(s1:s98,Guild)%>%
-  group_by(Guild)%>%
-  summarise_all(list(sum=sum))
-funguild3<-data.frame(funguild2)
-row.names(funguild3)<-funguild3$Guild;funguild3$Guild<-NULL
-funguild4<-data.frame(t(funguild3))
-head(funguild4)
-funguild4$Plottemp<-row.names(funguild4)
-funguild5<-funguild4%>%
-  separate(Plottemp,into=c("Plot",NA))
-funguild5$Plot<-as.numeric(sub("s","",funguild5$Plot))
-funguild5[,1]<-funguild5[,1]/5984*100
-
-dat17b<-dat17%>%
-  full_join(funguild5)
-dat17<-dat17b
-
-dat17$PlantMutualist<-dat17$Ectomycorrhizal+dat17$Arbuscular.Mycorrhizal+dat17$Endophyte
-
-
-#Try any description that includes "plant pathogen"
-ind<-grep("Plant Pathogen",funguild$Guild)
-funguild2<-funguild[ind,]
-funguild3<-colSums(funguild2[,1:162])
-funguild4<-data.frame(t(data.frame(t(funguild3))))
-head(funguild4)
-funguild4$Plottemp<-row.names(funguild4)
-colnames(funguild4)[1]<-"Plant.Pathogenanywhere"
-funguild5<-funguild4%>%
-  separate(Plottemp,into=c("Plot",NA))
-funguild5$Plot<-as.numeric(sub("s","",funguild5$Plot))
-funguild5[,1]<-funguild5[,1]/5984*100
-
-dat17b<-dat17%>%
-  full_join(funguild5)
-dat17<-dat17b

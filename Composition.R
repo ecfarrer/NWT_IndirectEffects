@@ -2,20 +2,56 @@
 
 
 #Data files
-datS
-datITSS5cS
-dat16SS5cS
-datE
-datITSS5cE
-dat16SS5cE
+dat16SS5c #all data
+datITSS5c #all data
+datS #Survey
+datITSS5cS #Survey
+dat16SS5cS #Survey
+datE #Experiment
+datITSS5cE #Experiment
+dat16SS5cE #Experiment
 
 
 ##### Ordinate all plots by site #####
 dat16SS5c
 datITSS5c
 
-tempphy<-dat16SS5c%>%
-  subset_samples(SampleType=="soil")%>%
+tempphy<-datITSS5c%>%
+  subset_samples(SampleType=="roots")%>%
+  subset_samples(ExperimentAnalysis=="Experiment")%>%
+  #subset_samples(Site%in%c("Audubon","EastKnoll","Trough"))%>%
+  filter_taxa(function(x) sum(x>0) >2, prune=T)%>%
+  transform_sample_counts(function(x) x/sum(x))
+sample_data(tempphy)$PlotCommunity<-paste(sample_data(tempphy)$PlotType,sample_data(tempphy)$CommunityType,sep="")
+unique(sample_data(tempphy)$PlotCommunity)
+sample_data(tempphy)$Site2<-sample_data(tempphy)$PlotCommunity
+ind<-which(sample_data(tempphy)$ExperimentAnalysis=="Experiment")
+sample_data(tempphy)$Site2[ind]<-as.character(sample_data(tempphy)$SiteTreatment[ind])
+sample_data(tempphy)$Site2<-factor(sample_data(tempphy)$Site2,levels=c("TroughControl","TroughExperimental","AudubonControl","AudubonExperimental","LeftyControl","LeftyExperimental","EastKnollControl","EastKnollExperimental","SurveySB","SurveyMM","SurveyDM","SurveyFF"))
+
+mynmdsplot <- ordinate(tempphy, "CAP", "bray",formula=as.formula(~Site2))
+#mynmdsplot <- ordinate(tempphy, "NMDS", "bray")
+
+site_scores2 <- data.frame(cbind(sample_data(tempphy),vegan::scores(mynmdsplot)$sites,labels=rownames(vegan::scores(mynmdsplot)$sites)))
+
+hull2 <- site_scores2 %>%
+  group_by(Site2) %>%
+  slice(chull(CAP1,CAP2))
+percexpl<-round(mynmdsplot$CCA$eig/mynmdsplot$tot.chi*100,1)
+ggplot(site_scores2)+
+  theme_classic()+#  theme(legend.position = "none")
+  xlab(paste("CAP1 [",bquote(.(percexpl[1])),"%]",sep=""))+
+  ylab(paste("CAP2 [",bquote(.(percexpl[2])),"%]",sep=""))+
+  scale_shape_manual(values=c(5,3,16))+ 
+  scale_color_manual(values = c("#5aa554","#bb6130", "#96b442","#ba4c46","#46c19a","#b94a73","#52ac68","#b84873","gray60","gray70","gray80","gray90"))+
+  scale_fill_manual(values = c("#5aa554","#bb6130", "#96b442","#ba4c46","#46c19a","#b94a73","#52ac68","#b84873","gray60","gray70","gray80","gray90"))+
+  geom_point(aes(x=CAP1, y=CAP2,color=Site2),size = 2)+#,shape=Site
+  geom_polygon(data=hull2,aes(x=CAP1,y=CAP2, fill=Site2,colour = Site2),alpha=.2)
+
+
+
+tempphy<-datITSS5c%>%
+  subset_samples(SampleType=="roots")%>%
   subset_samples(Site=="Trough")%>%
   #subset_samples(CommunityType!="WM")%>%
   filter_taxa(function(x) sum(x>0) >2, prune=T)%>%
@@ -30,8 +66,8 @@ plot_ordination(tempphy, mynmdsplot, type="samples", color="PlotCommunity",axes=
   geom_point(size = 2)+#
   stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=PlotCommunity),level=.95)
 
-tempphy<-dat16SS5c%>%
-  subset_samples(SampleType=="soil")%>%
+tempphy<-datITSS5c%>%
+  subset_samples(SampleType=="roots")%>%
   subset_samples(Site=="Audubon")%>%
   #subset_samples(CommunityType!="WM")%>%
   filter_taxa(function(x) sum(x>0) >2, prune=T)%>%
@@ -83,25 +119,25 @@ plot_ordination(tempphy, mynmdsplot, type="samples", color="PlotCommunity",axes=
 tempphyS<-dat16SS5cS%>%
   subset_samples(SampleType=="soil")%>%
   #subset_samples(Site=="Trough")%>%
-  subset_samples(CommunityType!="WM")%>%
+  #subset_samples(CommunityType!="WM")%>%
   filter_taxa(function(x) sum(x>0) >2, prune=T)%>%
   transform_sample_counts(function(x) x/sum(x))
 
-mynmdsS <- ordinate(tempphyS, "CAP", "bray",formula=as.formula(~CommunityType*Site))#+Condition(CommunityType+Site)
+mynmdsS <- ordinate(tempphyS, "CAP", "bray",formula=as.formula(~Site))#+Condition(CommunityType+Site)
 anova(mynmdsS,by="terms",permutations = how(blocks=sample_data(tempphyS)$Site,nperm=999))
 anova(mynmdsS,by="margin",permutations = how(nperm=999))
 summary(mynmdsS)
 
 mynmdsplot <- ordinate(tempphyS, "CAP", "bray",formula=as.formula(~SiteCommunityType))
-#mynmdsplot <- ordinate(tempphyS, "CAP", "bray",formula=as.formula(~CommunityType))
+mynmdsplot <- ordinate(tempphyS, "CAP", "bray",formula=as.formula(~Site))
 
-plot_ordination(tempphyS, mynmdsplot, type="samples", color="CommunityType",axes=c(1,2))+
+plot_ordination(tempphyS, mynmdsplot, type="samples", color="Site",axes=c(1,2))+
   theme_classic()+#  theme(legend.position = "none")
   geom_point(size = 2)+
   #scale_color_manual(values = c("#0047b3", "#99c2ff","#2d862d","#b30000","#ff8080"),labels = c("SB", "WM","MM","DM","FF"),name = "Community Type")+#,"#79d279"
   #scale_fill_manual(values = c("#0047b3", "#99c2ff","#2d862d","#b30000","#ff8080"),labels = c("SB", "WM","MM","DM","FF"),name = "Community Type")+
-  #stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=CommunityType),level=.95)+
-  facet_wrap(~Site)
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=Site),level=.95)#+
+#  facet_wrap(~Site)
 
 plot_ordination(tempphyS, mynmdsplot, type="samples", color="Site",axes=c(1,2))+
   theme_classic()+#  theme(legend.position = "none")
@@ -193,15 +229,15 @@ plot_grid(tr,le,au,ek, nrow = 2,labels=c("a) Trough","b) Lefty","c) Audubon","d)
 #for ITS roots, the capscale with sitetreatment looks better than the nmds. all should be significant but in different directions. the SiteTreatment with condition(site) looks nice
 #fot ITS soil, lefty is not sig, east knoll is p=0.045, others are more sig. doing capscale with sitetreatment or doing nmds on all you can't see an effect in trough. the SiteTreatment with condition(site) looks nice
 
-tempphyE<-datITSS5cE%>%
-  subset_samples(SampleType=="soil")%>%
+tempphyE<-dat16SS5cE%>%
+  subset_samples(SampleType=="roots")%>%
   filter_taxa(function(x) sum(x>0) >2, prune=T)%>%
   transform_sample_counts(function(x) x/sum(x)) #standardizing hardly changes anything, not even noticable
 sample_data(tempphyE)$Site<-factor(sample_data(tempphyE)$Site,levels=c("Trough","Audubon","Lefty","EastKnoll"))
 
-sample_sums(tempphyE)
+#sample_sums(tempphyE)
 
-#mynmdsE <- ordinate(tempphyE, "CAP", "bray",formula=as.formula(~Site*Treatment))
+mynmdsE <- ordinate(tempphyE, "CAP", "bray",formula=as.formula(~Site))
 mynmdsE <- ordinate(tempphyE, "CAP", "bray",formula=as.formula(~SiteTreatment+Condition(Site)))
 #mynmdsE <- ordinate(tempphyE, "CAP", "bray",formula=as.formula(~CommunityPlotType))
 anova(mynmdsE,by="terms",permutations = how(blocks=sample_data(tempphyE)$Site,nperm=999))
@@ -218,11 +254,10 @@ plot_ordination(tempphyE, mynmdsE, type="samples", color="Treatment",axes=c(1,2)
 #dev.off()
 
 #pdf("/Users/farrer/Dropbox/EmilyComputerBackup/Documents/Niwot/NiwotIndirectEffects/Figs/dbRDArootsfungibysite.pdf",width=8,height=6)
-plot_ordination(tempphyE, mynmdsE, type="samples", color="Treatment",axes=c(1,2))+
+plot_ordination(tempphyE, mynmdsE, type="samples", color="Site",axes=c(1,2))+
   theme_classic()+#  theme(legend.position = "none")
   geom_point(size = 2)+
-  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=Treatment),level=.95)+
-  facet_wrap(~Site)
+  stat_ellipse(geom = "polygon", type="t", alpha=0.2, aes(fill=Site),level=.95)
 #dev.off()
 
 

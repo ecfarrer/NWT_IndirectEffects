@@ -925,7 +925,7 @@ funtraits2$MoistureTreatment<-factor(paste(funtraits2$MoistureType,funtraits2$Tr
 # t2_fungi$plot_diff_abund(add_sig = T, simplify_names = FALSE) + ggplot2::ylab("Relative abundance (%)")
 
 
-###### NOT using abundance weighted ######
+###### NOT abundance weighted ######
 #Just percentage of taxa, for functional redundancy
 t1_fungi$cal_spe_func_perc(abundance_weighted = F, perc = T)#perc means make it a percent vs ratio
 t1_fungi$res_spe_func_raw_FungalTraits

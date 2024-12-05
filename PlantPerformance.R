@@ -194,7 +194,7 @@ ggplot(datE, aes(x=Treatment, y=Biomassg, color=Treatment))+
 #Statistics
 #Chamber is unique to the 1 x 1 m plot, "Plot" is unique to the elevation of the site across sand treatments (1,2,3 1,2,3)
 
-m0<-lme(Biomassg ~ Treatment*CommunityType, random=~1|SitePlot/Chamber, data = datE)
+m0<-lme(Biomassg ~ Treatment*Site, random=~1|SitePlot/Chamber, data = datE)
 anova(m0,type="margin")
 mc<-lme(Biomassg ~ SiteTreatment, random=~1|SitePlot/Chamber, data = datE)
 summary(glht(mc, linfct = mcp(SiteTreatment=c("Trough_Experimental-Trough_Control=0","Audubon_Experimental-Audubon_Control=0","Lefty_Experimental-Lefty_Control=0","EastKnoll_Experimental-EastKnoll_Control=0"))))
