@@ -139,11 +139,25 @@ dat<-labdat2%>%
   full_join(amf2)%>%
   full_join(richITS2)%>%
   full_join(rich16S2)
+dat$CommunityType<-factor(dat$CommunityType,levels=c("WM","SB","MM","DM","FF"))
 dat$Site<-factor(dat$Site,levels=c("Trough","Audubon","Lefty","EastKnoll"))
 dat$SiteCommunityType<-paste(dat$Site,dat$CommunityType,sep="")
 dat$SiteCommunityType<-factor(dat$SiteCommunityType,levels=c("TroughSB","TroughWM","TroughMM","TroughDM","TroughFF","AudubonSB","AudubonMM","AudubonDM","AudubonFF","LeftySB","LeftyMM","LeftyDM","LeftyFF","EastKnollSB","EastKnollMM","EastKnollDM","EastKnollFF"))
+dat$PlotCommunity<-paste(dat$PlotType,dat$CommunityType,sep="")
+dat$SiteTreatment<-paste(dat$Site,dat$Treatment,sep="")
+dat$Site2<-dat$PlotCommunity
+ind<-which(dat$ExperimentAnalysis=="Experiment")
+dat$Site2[ind]<-as.character(dat$SiteTreatment[ind])
+dat$Site2<-factor(dat$Site2,levels=c("TroughControl","TroughExperimental","AudubonControl","AudubonExperimental","LeftyControl","LeftyExperimental","EastKnollControl","EastKnollExperimental","SurveySB","SurveyMM","SurveyDM","SurveyFF"))
+#sample_data(tempphy)$Site3<-as.character(sample_data(tempphy)$Site2)
+#ind<-which(sample_data(tempphy)$ExperimentAnalysis=="Experiment")
+#sample_data(tempphy)$Site3[ind]<-as.character(sample_data(tempphy)$Treatment[ind])
+#sample_data(tempphy)$Site3<-factor(sample_data(tempphy)$Site3,levels=c("Control","Experimental","SurveySB","SurveyMM","SurveyDM","SurveyFF"))
+dat$PlotType<-factor(dat$PlotType,levels=c("Survey","Control","Experimental"))
 head(dat)
 dim(dat)
+
+
 
 #I caught and fixed one copy and paste error from the field data leaf area into the licor data leaf area. and I checked that all the NAs/differences between the field data leaf areas and the licor data leaf areas are accounted for. the ones that are NAs in the licor data leaf area are samples that were removed b/c they had suspicious values for Acorrectedredo or had a deschampsia filling most of the frame so suspect
 dat$LeafAreacm2redo-dat$RedoLeafAreacm2fielddata

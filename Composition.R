@@ -16,9 +16,9 @@ dat16SS5cE #Experiment
 dat16SS5c
 datITSS5c
 
-tempphy<-datITSS5c%>%
+tempphy<-dat16SS5c%>%
   subset_samples(SampleType=="roots")%>%
-  subset_samples(ExperimentAnalysis=="Experiment")%>%
+  #subset_samples(ExperimentAnalysis=="Experiment")%>%
   #subset_samples(Site%in%c("Audubon","EastKnoll","Trough"))%>%
   filter_taxa(function(x) sum(x>0) >2, prune=T)%>%
   transform_sample_counts(function(x) x/sum(x))
@@ -28,6 +28,10 @@ sample_data(tempphy)$Site2<-sample_data(tempphy)$PlotCommunity
 ind<-which(sample_data(tempphy)$ExperimentAnalysis=="Experiment")
 sample_data(tempphy)$Site2[ind]<-as.character(sample_data(tempphy)$SiteTreatment[ind])
 sample_data(tempphy)$Site2<-factor(sample_data(tempphy)$Site2,levels=c("TroughControl","TroughExperimental","AudubonControl","AudubonExperimental","LeftyControl","LeftyExperimental","EastKnollControl","EastKnollExperimental","SurveySB","SurveyMM","SurveyDM","SurveyFF"))
+sample_data(tempphy)$Site3<-as.character(sample_data(tempphy)$Site2)
+ind<-which(sample_data(tempphy)$ExperimentAnalysis=="Experiment")
+sample_data(tempphy)$Site3[ind]<-as.character(sample_data(tempphy)$Treatment[ind])
+sample_data(tempphy)$Site3<-factor(sample_data(tempphy)$Site3,levels=c("Control","Experimental","SurveySB","SurveyMM","SurveyDM","SurveyFF"))
 
 mynmdsplot <- ordinate(tempphy, "CAP", "bray",formula=as.formula(~Site2))
 #mynmdsplot <- ordinate(tempphy, "NMDS", "bray")
@@ -42,10 +46,11 @@ ggplot(site_scores2)+
   theme_classic()+#  theme(legend.position = "none")
   xlab(paste("CAP1 [",bquote(.(percexpl[1])),"%]",sep=""))+
   ylab(paste("CAP2 [",bquote(.(percexpl[2])),"%]",sep=""))+
-  scale_shape_manual(values=c(5,3,16))+ 
-  scale_color_manual(values = c("#5aa554","#bb6130", "#96b442","#ba4c46","#46c19a","#b94a73","#52ac68","#b84873","gray60","gray70","gray80","gray90"))+
-  scale_fill_manual(values = c("#5aa554","#bb6130", "#96b442","#ba4c46","#46c19a","#b94a73","#52ac68","#b84873","gray60","gray70","gray80","gray90"))+
-  geom_point(aes(x=CAP1, y=CAP2,color=Site2),size = 2)+#,shape=Site
+  scale_shape_manual(values=c(5,3,16,17))+ 
+  scale_color_manual(values = c("#56ae6c","#ba543d", "#56ae6c","#ba543d","#56ae6c","#ba543d","#56ae6c","#ba543d","gray60","gray70","gray80","gray90"))+
+  scale_fill_manual(values = c("#56ae6c","#ba543d", "#56ae6c","#ba543d","#56ae6c","#ba543d","#56ae6c","#ba543d","gray60","gray70","gray80","gray90"))+
+  #scale_color_manual(values = c("#56ae6c","#ba543d","gray60","gray70","gray80","gray90"))+
+  geom_point(aes(x=CAP1, y=CAP2,color=Site2,shape=Site),size = 2)+#
   geom_polygon(data=hull2,aes(x=CAP1,y=CAP2, fill=Site2,colour = Site2),alpha=.2)
 
 

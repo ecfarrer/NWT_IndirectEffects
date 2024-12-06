@@ -20,6 +20,28 @@ terms.gls <- function(object, ...) {
 
 ##### Abiotic #####
 
+###### Survey + Experiment ######
+
+m1<-dat%>%
+  group_by(CommunityType,PlotType,Site)%>%
+  summarise(se=std.error(SoilMoisturePercent),SoilMoisturePercent=mean(SoilMoisturePercent))
+m1
+#m1$mcs<-c("a","b","a","a","a","a","a","a")
+
+#with facet wrap
+ggplot(dat, aes(x=PlotType, y=SoilMoisturePercent, color=PlotType))+   
+  ylab("Moisture (%)")+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  geom_point(data=m1,size=1.8,aes(color=PlotType,group=PlotType))+
+  geom_point(size=.7,aes(fill=PlotType,group=PlotType),position = position_jitterdodge(jitter.width=.25),alpha=rep(.4))+
+  geom_errorbar(data=m1,aes(ymax=SoilMoisturePercent+se,ymin=SoilMoisturePercent-se),width=.3)+
+  facet_wrap(vars(CommunityType),scale = 'free_x',strip.position = "bottom",nrow=1)+
+  #  geom_text(m1,mapping=aes(x=Treatment,y=2.7,label=mcs),color="black",size=3)+
+  scale_color_manual(values = c("gray70","#56ae6c","#ba543d")) 
+
+
+
 ###### Moisture - Survey ######
 
 ggplot(datS, aes(x=Site,y=SoilMoisturePercent))+
@@ -130,7 +152,26 @@ anova(m0,type="margin")
 
 #dat, datS, datE
 
-dat$PlotCommunity<-paste(dat$PlotType,dat$CommunityType,sep="")
+###### Survey + Experiment ######
+
+#
+m1<-dat%>%
+  group_by(CommunityType,PlotType,Site)%>%
+  summarise(se=std.error(Chao116S_roots),Chao116S_roots=mean(Chao116S_roots,na.rm=T))
+m1
+#m1$mcs<-c("a","b","a","a","a","a","a","a")
+
+#with facet wrap
+ggplot(dat, aes(x=PlotType, y=Chao116S_roots, color=PlotType))+   
+  ylab("Chao1")+
+  theme_classic()+
+  theme(line=element_line(size=.3),text=element_text(size=10),strip.background = element_rect(colour="white", fill="white"),axis.line=element_line(color="gray30",size=.5),legend.position = "none",panel.spacing=unit(0,"cm"),strip.placement = "outside",axis.title.x = element_blank())+
+  geom_point(data=m1,size=1.8,aes(color=PlotType,group=PlotType))+
+  geom_point(size=.7,aes(fill=PlotType,group=PlotType),position = position_jitterdodge(jitter.width=.25),alpha=rep(.4))+
+  geom_errorbar(data=m1,aes(ymax=Chao116S_roots+se,ymin=Chao116S_roots-se),width=.3)+
+  facet_wrap(vars(CommunityType),scale = 'free_x',strip.position = "bottom",nrow=1)+
+  #  geom_text(m1,mapping=aes(x=Treatment,y=2.7,label=mcs),color="black",size=3)+
+  scale_color_manual(values = c("gray70","#56ae6c","#ba543d")) 
 
 # m1<-dat%>%
 #   filter(Site=="Trough")%>%
